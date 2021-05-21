@@ -1,0 +1,48 @@
+Package: crio
+Version: 0.99.0
+Date: 2021-05-21
+Title: CellRanger Input/Output
+Authors@R: c(
+    person("Aaron", "Lun", role = c("aut", "cre"), email = "infinite.monkeys.with.keyboards@gmail.com"), 
+    person("Jonathan", "Griffiths", role="ctb"), 
+    person("Davis", "McCarthy", role="ctb"))
+Description: 
+    Load CellRanger output files into Bioconductor data structures,
+    most typically a SingleCellExperiment containing assay values.
+Depends: SingleCellExperiment
+Imports: 
+    utils,
+    stats,
+    methods,
+    Matrix,
+    Rcpp,
+    BiocGenerics,
+    S4Vectors,
+    SummarizedExperiment,
+    BiocParallel,
+    HDF5Array,
+    rhdf5,
+    R.utils,
+    beachmat
+Suggests: 
+    testthat,
+    knitr,
+    BiocStyle,
+    rmarkdown,
+    jsonlite,
+    DropletTestFiles
+biocViews: 
+    ImmunoOncology,
+    SingleCell,
+    Sequencing,
+    RNASeq,
+    GeneExpression,
+    Transcriptomics,
+    DataImport,
+    Coverage
+License: GPL-3
+NeedsCompilation: yes
+VignetteBuilder: knitr
+LinkingTo: Rcpp, Rhdf5lib
+SystemRequirements: C++11, GNU make
+RoxygenNote: 7.1.1
