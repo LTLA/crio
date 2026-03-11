@@ -9,3 +9,7 @@ get_cell_barcodes <- function(fname, dname, barcodelen) {
     .Call('_crio_get_cell_barcodes', PACKAGE = 'crio', fname, dname, barcodelen)
 }
 
+read_mm <- function(path, two_pass, class_name, threads) {
+    .Call('_crio_read_mm', PACKAGE = 'crio', path, two_pass, class_name, threads)
+}
+

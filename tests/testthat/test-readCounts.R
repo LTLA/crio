@@ -1,0 +1,333 @@
+# library(crio); library(testthat); source("test-readCounts.R")
+
+set.seed(2000)
+library(Matrix)
+
+# Mocking up some 10X genomics output.
+my.counts <- abs(rsparsematrix(100, 10, density=0.2) * 10)
+my.counts <- as(my.counts, "CsparseMatrix")
+
+ngenes <- nrow(my.counts)
+gene.ids <- paste0("GENE", seq_len(ngenes))
+gene.symb <- paste0(
+    sample(LETTERS, replace=TRUE, ngenes),
+    sample(LETTERS, replace=TRUE, ngenes),
+    sample(LETTERS, replace=TRUE, ngenes),
+    "-",
+    sample(9, replace=TRUE, ngenes)
+)
+
+cell.ids <- paste0("BARCODE-", seq_len(ncol(my.counts)))
+
+test_that("readCounts works correctly for sparse counts, version < 3", {
+    tmpdir <- tempfile()
+    write10xCounts(path=tmpdir, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+
+    # Reading it in.
+    sce10x <- readCounts(tmpdir)
+    alt.counts <- my.counts
+    rownames(alt.counts) <- gene.ids
+    colnames(alt.counts) <- NULL
+
+    expect_equal(counts(sce10x), alt.counts)
+    expect_identical(rowData(sce10x)$ID, gene.ids)
+    expect_identical(rowData(sce10x)$Symbol, gene.symb)
+    expect_identical(sce10x$Sample, rep(tmpdir, ncol(my.counts)))
+    expect_identical(sce10x$Barcode, cell.ids)
+
+    # Trying all the options for reading matrices. 
+    sce10x.tp <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE))
+    expect_equal(counts(sce10x.tp), alt.counts)
+
+    sce10x.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix"))
+    svt.counts <- as(alt.counts, "SVT_SparseArray")
+    expect_equal(counts(sce10x.svt), svt.counts)
+    sce10x.tp.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE, mtx.class="SVT_SparseMatrix"))
+    expect_equal(counts(sce10x.tp.svt), svt.counts)
+
+    sce10x.mc <- readCounts(configureSampleForReadCounts(tmpdir, mtx.threads=2))
+    expect_equal(counts(sce10x.mc), alt.counts)
+    sce10x.mc <- readCounts(configureSampleForReadCounts(tmpdir, mtx.threads=2, mtx.two.pass=TRUE))
+    expect_equal(counts(sce10x.mc), alt.counts)
+
+    # Adding another dataset with slightly different counts.
+    tmpdir2 <- tempfile()
+    write10xCounts(path=tmpdir2, my.counts*2, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+
+    sce10x2 <- readCounts(tmpdir2)
+    expect_equal(assay(sce10x)*2L, assay(sce10x2))
+
+    ref <- cbind(sce10x, sce10x2)
+    colnames(ref) <- NULL
+    combined <- readCounts(c(tmpdir, tmpdir2))
+
+    expect_equal(rowData(ref), rowData(combined))
+    expect_equal(colData(ref), colData(combined))
+    expect_equal(assay(ref), assay(combined))
+})
+
+test_that("readCounts works correctly with chromosomal positions in the features", {
+    tmpdir <- tempfile()
+    write10xCounts(path=tmpdir, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+
+    feats <- read.delim(file.path(tmpdir, "genes.tsv"), header=FALSE)
+    feats$Type <- sample(c("protein", "foo"), nrow(feats), replace=TRUE)
+    feats$Chr <- sample(c("chrA", "chrB", "chrC"), nrow(feats), replace=TRUE)
+    feats$Start <- sample(1000, nrow(feats), replace=TRUE)
+    feats$End <- feats$Start + sample(100, nrow(feats), replace=TRUE)
+    write.table(file=file.path(tmpdir, "genes.tsv"), feats, sep="\t", col.names=FALSE, row.names=FALSE, quote=FALSE)
+
+    sce10x <- readCounts(tmpdir)
+    expect_s4_class(rowRanges(sce10x), "GRanges")
+    expect_identical(start(rowRanges(sce10x)), feats$Start)
+    expect_identical(rowRanges(sce10x)$Type, feats$Type)
+
+    # Empty seqnames for mitochondria are replaced with chrM.
+    replace <- 1:10
+    feats$Chr[replace] <- ""
+    feats[,2] <- paste0("MT-", feats[,2])
+    write.table(file=file.path(tmpdir, "genes.tsv"), feats, sep="\t", col.names=FALSE, row.names=FALSE, quote=FALSE)
+
+    sce10x <- readCounts(tmpdir)
+    expect_identical(unique(as.character(seqnames(rowRanges(sce10x))[1:10])), "chrM")
+})
+
+test_that("readCounts works correctly for names", {
+    tmpdir <- tempfile()
+    write10xCounts(path=tmpdir, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+
+    # Checking that column names work.
+    sce10x3 <- readCounts(tmpdir, column.names=TRUE)
+    expect_identical(colnames(sce10x3), sce10x3$Barcode)
+
+    sce10x4 <- readCounts(c(tmpdir, tmpdir), column.names=TRUE)
+    expect_identical(colnames(sce10x4), paste0(rep(1:2, each=ncol(sce10x3)), "_", colnames(sce10x3)))
+
+    # Checking that sample names work.
+    sce10x5 <- readCounts(c(B=tmpdir, C=tmpdir))
+    expect_identical(colData(sce10x5)$Sample, rep(c("B", "C"), each=ncol(sce10x3)))
+    expect_identical(metadata(sce10x5)$Samples, c(B=tmpdir, C=tmpdir)) 
+})
+
+test_that("readCounts works for sparse counts with odd inputs", {
+    tmpdir <- tempfile()
+    gene.symb2 <- paste0(gene.symb, sample(c("#", "'", '"', ""), length(gene.ids), replace=TRUE)) # full of weird elements.
+    write10xCounts(path=tmpdir, my.counts, gene.id=gene.ids, gene.symbol=gene.symb2, barcodes=cell.ids)
+    sce10x <- readCounts(tmpdir)
+
+    expect_equal(assay(sce10x, withDimnames=FALSE), my.counts)
+    expect_identical(colData(sce10x)$Barcode, cell.ids)
+    expect_identical(rowData(sce10x)$ID, gene.ids)
+    expect_identical(rowData(sce10x)$Symbol, gene.symb2)
+})
+
+test_that("readCounts works correctly for sparse counts, version >= 3", {
+    tmpdir <- tempfile()
+    gene.type <- sample(LETTERS, ngenes, replace=TRUE)
+    write10xCounts(path=tmpdir, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, 
+        gene.type=gene.type, barcodes=cell.ids, version="3")
+
+    sce10x <- readCounts(tmpdir)
+    alt.counts <- my.counts
+    rownames(alt.counts) <- gene.ids
+    colnames(alt.counts) <- NULL
+
+    expect_equal(counts(sce10x), alt.counts)
+    expect_identical(rowData(sce10x)$ID, gene.ids)
+    expect_identical(rowData(sce10x)$Symbol, gene.symb)
+    expect_identical(rowData(sce10x)$Type, gene.type)
+    expect_identical(sce10x$Sample, rep(tmpdir, ncol(my.counts)))
+    expect_identical(sce10x$Barcode, cell.ids)
+
+    # Works in delayed mode.
+    sce10delayed <- readCounts(c(tmpdir, tmpdir), delayed=TRUE)
+    expect_s4_class(counts(sce10delayed), "DelayedMatrix")
+    converted <- as(counts(sce10delayed), "CsparseMatrix")
+    expect_equal(converted, cbind(alt.counts, alt.counts))
+})
+
+test_that("readCounts works correctly for zipped files", {
+    # Works for version 2:
+    tmpdir <- tempfile()
+    write10xCounts(path=tmpdir, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+
+    ref <- readCounts(tmpdir)
+    lapply(list.files(tmpdir, full.names=TRUE), R.utils::gzip)
+    alt <- readCounts(tmpdir)
+    expect_identical(ref, alt)
+
+    # Works for version 3:
+    tmpdir <- tempfile()
+    write10xCounts(path=tmpdir, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids, version="3")
+
+    ref <- readCounts(tmpdir)
+    lapply(list.files(tmpdir, full.names=TRUE), R.utils::gunzip)
+    alt <- readCounts(tmpdir)
+    expect_identical(ref, alt)
+})
+
+test_that("readCounts works correctly for HDF5 counts, version < 3", {
+    tmph5 <- tempfile(fileext=".h5")
+    write10xCounts(path=tmph5, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+        
+    # Reading it in.
+    sce10x <- readCounts(tmph5)
+    alt.counts <- as.matrix(my.counts)
+    dimnames(alt.counts) <- NULL
+
+    expect_s4_class(counts(sce10x, withDimnames=FALSE), "DelayedMatrix")
+    expect_equal(as.matrix(counts(sce10x, withDimnames=FALSE)), alt.counts)
+    expect_identical(rowData(sce10x)$ID, gene.ids)
+    expect_identical(rowData(sce10x)$Symbol, gene.symb)
+    expect_identical(sce10x$Sample, rep(tmph5, ncol(my.counts)))
+    expect_identical(sce10x$Barcode, cell.ids)
+
+    # Reading it in, twice; and checking it makes sense.
+    sce10x2 <- readCounts(c(tmph5, tmph5))
+    ref <- sce10x
+    colnames(ref) <- NULL
+    ref <- cbind(ref, ref)
+    expect_identical(colData(ref), colData(sce10x2))
+    expect_identical(rowData(ref), rowData(sce10x2))
+    expect_identical(as.matrix(assay(ref)), as.matrix(assay(sce10x2)))
+})
+
+test_that("readCounts works correctly for HDF5 counts, version >= 3", {
+    tmph5 <- tempfile(fileext=".h5")
+    gene.type <- sample(LETTERS, ngenes, replace=TRUE)
+    write10xCounts(path=tmph5, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, gene.type=gene.type, barcodes=cell.ids, version="3")
+        
+    sce10x <- readCounts(tmph5)
+    alt.counts <- as.matrix(my.counts)
+    dimnames(alt.counts) <- NULL
+
+    expect_s4_class(counts(sce10x, withDimnames=FALSE), "DelayedMatrix")
+    expect_equal(as.matrix(counts(sce10x, withDimnames=FALSE)), alt.counts)
+
+    expect_identical(rowData(sce10x)$ID, gene.ids)
+    expect_identical(rowData(sce10x)$Symbol, gene.symb)
+    expect_identical(rowData(sce10x)$Type, gene.type)
+
+    expect_identical(sce10x$Sample, rep(tmph5, ncol(my.counts)))
+    expect_identical(sce10x$Barcode, cell.ids)
+})
+
+test_that("readCounts works correctly for prefixes", {
+    tmpdir1 <- tempfile()
+    write10xCounts(path=tmpdir1, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+    tmpdir2 <- tempfile()
+    write10xCounts(path=tmpdir2, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+
+    tmpdir.all <- tempfile()
+    dir.create(tmpdir.all, showWarnings=FALSE)
+    first.files <- list.files(tmpdir1, full.names=TRUE)
+    file.copy(first.files, file.path(tmpdir.all, paste0("jelly_", basename(first.files))))
+    second.files <- list.files(tmpdir2, full.names=TRUE)
+    file.copy(second.files, file.path(tmpdir.all, paste0("peanut_", basename(second.files))))
+
+    out <- readCounts(file.path(tmpdir.all, c("jelly_", "peanut_")))
+    alt <- readCounts(c(tmpdir1, tmpdir2))
+    expect_identical(assay(out), assay(alt))
+    expect_identical(out$Barcode, alt$Barcode)
+})
+
+test_that("readCounts works correctly with mismatching features", {
+    tmpdir1 <- tempfile()
+    write10xCounts(path=tmpdir1, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+
+    tmpdir2 <- tempfile()
+    keep <- 5:19
+    write10xCounts(path=tmpdir2, my.counts[keep,], gene.id=gene.ids[keep], gene.symbol=gene.symb[keep], barcodes=cell.ids)
+
+    expect_error(readCounts(c(tmpdir1, tmpdir2)), "gene information differs")
+
+    # Intersection works as expected.
+    sce10x <- readCounts(c(tmpdir1, tmpdir2), intersect.rows=TRUE)
+    expect_identical(rownames(sce10x), gene.ids[keep])
+    expect_equal(assay(sce10x, withDimnames=FALSE), cbind(my.counts[keep,], my.counts[keep,]))
+})
+
+test_that("readCounts, use gene symbols as row names", {
+    tmpdir <- tempfile()
+    write10xCounts(path=tmpdir, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+    
+    # Reading it in.
+    sce10x <- readCounts(tmpdir, row.names = "symbol")
+    expect_equal(rownames(sce10x), gene.symb)
+})
+
+test_that("readCounts, use gene symbols as row names, with duplicated symbols", {
+    gene.symb2 <- c(gene.symb[1], gene.symb[1], gene.symb[-c(1,2)])
+    rns_expect <- c(paste(gene.symb[1], gene.ids[1:2], sep = "_"), gene.symb[-c(1,2)])
+    tmpdir <- tempfile()
+    write10xCounts(path=tmpdir, my.counts, gene.id=gene.ids, gene.symbol=gene.symb2, barcodes=cell.ids)
+    
+    sce10x <- readCounts(tmpdir, row.names = "symbol")
+    expect_equal(rownames(sce10x), rns_expect)
+})
+
+test_that("readCounts with an integer Matrix Market file", {
+    int.counts <- ceiling(my.counts) # make them integer but avoid problems with zeros. 
+    tmpdir <- tempfile()
+    write10xCounts(path=tmpdir, int.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+
+    # Checking that the MatrixMarket file says "integer".
+    first.line <- readLines(file.path(tmpdir, "matrix.mtx"), n=1)
+    expect_match(first.line, "integer")
+
+    alt.counts <- int.counts
+    rownames(alt.counts) <- gene.ids
+    colnames(alt.counts) <- NULL
+
+    # Trying all the options for reading matrices. 
+    sce10x <- readCounts(tmpdir)
+    expect_equal(counts(sce10x), alt.counts)
+    sce10x.tp <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE))
+    expect_equal(counts(sce10x.tp), alt.counts)
+
+    sce10x.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix"))
+    svt.counts <- as(alt.counts, "SVT_SparseArray")
+    type(svt.counts) <- "integer"
+    expect_equal(counts(sce10x.svt), svt.counts)
+    sce10x.tp.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE, mtx.class="SVT_SparseMatrix"))
+    expect_equal(counts(sce10x.tp.svt), svt.counts)
+
+    # Multiple threads as well:
+    sce10x.mc <- readCounts(configureSampleForReadCounts(tmpdir, mtx.threads=2))
+    expect_equal(counts(sce10x.mc), alt.counts)
+    sce10x.mc <- readCounts(configureSampleForReadCounts(tmpdir, mtx.threads=2, mtx.two.pass=TRUE))
+    expect_equal(counts(sce10x.mc), alt.counts)
+})
+
+set.seed(2009)
+test_that("readCounts with a shuffled Matrix Market file", {
+    tmpdir <- tempfile()
+    write10xCounts(path=tmpdir, my.counts, gene.id=gene.ids, gene.symbol=gene.symb, barcodes=cell.ids)
+
+    # Shuffling the lines of the Matrix Market file to check that read_mm() handles it correctly.
+    mtx.path <- file.path(tmpdir, "matrix.mtx")
+    all.lines <- readLines(mtx.path)
+    writeLines(c(head(all.lines, 2), sample(tail(all.lines, -2))), con=mtx.path)
+
+    alt.counts <- my.counts
+    rownames(alt.counts) <- gene.ids
+    colnames(alt.counts) <- NULL
+
+    # Trying all the options for reading matrices. 
+    sce10x <- readCounts(tmpdir)
+    expect_equal(counts(sce10x), alt.counts)
+    sce10x.tp <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE))
+    expect_equal(counts(sce10x.tp), alt.counts)
+
+    sce10x.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix"))
+    svt.counts <- as(alt.counts, "SVT_SparseArray")
+    expect_equal(counts(sce10x.svt), svt.counts)
+    sce10x.tp.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE, mtx.class="SVT_SparseMatrix"))
+    expect_equal(counts(sce10x.tp.svt), svt.counts)
+
+    # Multiple threads as well:
+    sce10x.mc <- readCounts(configureSampleForReadCounts(tmpdir, mtx.threads=2))
+    expect_equal(counts(sce10x.mc), alt.counts)
+    sce10x.mc <- readCounts(configureSampleForReadCounts(tmpdir, mtx.threads=2, mtx.two.pass=TRUE))
+    expect_equal(counts(sce10x.mc), alt.counts)
+})

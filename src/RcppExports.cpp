@@ -5,6 +5,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // encode_sequences
 Rcpp::IntegerVector encode_sequences(Rcpp::StringVector Seqs);
 RcppExport SEXP _crio_encode_sequences(SEXP SeqsSEXP) {
@@ -27,10 +32,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// read_mm
+Rcpp::RObject read_mm(const std::string& path, bool two_pass, const std::string& class_name, int threads);
+RcppExport SEXP _crio_read_mm(SEXP pathSEXP, SEXP two_passSEXP, SEXP class_nameSEXP, SEXP threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type path(pathSEXP);
+    Rcpp::traits::input_parameter< bool >::type two_pass(two_passSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type class_name(class_nameSEXP);
+    Rcpp::traits::input_parameter< int >::type threads(threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(read_mm(path, two_pass, class_name, threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_crio_encode_sequences", (DL_FUNC) &_crio_encode_sequences, 1},
     {"_crio_get_cell_barcodes", (DL_FUNC) &_crio_get_cell_barcodes, 3},
+    {"_crio_read_mm", (DL_FUNC) &_crio_read_mm, 4},
     {NULL, NULL, 0}
 };
 

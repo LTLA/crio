@@ -7,8 +7,8 @@ Authors@R: c(
     person("Jonathan", "Griffiths", role="ctb"), 
     person("Davis", "McCarthy", role="ctb"))
 Description: 
-    Load CellRanger output files into Bioconductor data structures,
-    most typically a SingleCellExperiment containing assay values.
+    Load CellRanger's output files into Bioconductor data structures, most typically a SingleCellExperiment containing assay values.
+    Also supports writing to CellRanger formats.
 Depends: SingleCellExperiment
 Imports: 
     utils,
@@ -19,11 +19,8 @@ Imports:
     BiocGenerics,
     S4Vectors,
     SummarizedExperiment,
-    BiocParallel,
     HDF5Array,
-    rhdf5,
-    R.utils,
-    beachmat
+    rhdf5
 Suggests: 
     testthat,
     knitr,
@@ -31,8 +28,11 @@ Suggests:
     rmarkdown,
     jsonlite,
     DropletTestFiles
+LinkingTo:
+    Rcpp,
+    Rhdf5lib,
+    assorthead
 biocViews: 
-    ImmunoOncology,
     SingleCell,
     Sequencing,
     RNASeq,
@@ -43,6 +43,6 @@ biocViews:
 License: GPL-3
 NeedsCompilation: yes
 VignetteBuilder: knitr
-LinkingTo: Rcpp, Rhdf5lib
 SystemRequirements: C++11, GNU make
-RoxygenNote: 7.1.1
+RoxygenNote: 7.3.3
+Encoding: UTF-8
