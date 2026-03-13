@@ -257,6 +257,7 @@ readCounts <- function(
 }
 
 #' @export
+#' @rdname readCounts
 configureSampleForReadCounts <- function(
     path,
     type = NULL,

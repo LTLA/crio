@@ -20,6 +20,7 @@
 #' @param chemistry,original.gem.groups,library.ids 
 #' Strings containing metadata attributes to be added to the HDF5 file for \code{type="HDF5"}.
 #' Their interpretation is not formally documented and is left to the user's imagination.
+#' @param num.threads Integer specifying the number of threads to use for counting the number of non-zero elements.
 #' 
 #' @details
 #' This function will try to automatically detect the desired format based on whether \code{path} ends with \code{".h5"}.
@@ -64,13 +65,13 @@
 #' 
 #' # Writing this to file:
 #' tmpdir <- tempfile()
-#' write10xCounts(tmpdir, my.counts, gene.id=gene.ids, 
+#' writeCounts(tmpdir, my.counts, gene.id=gene.ids, 
 #'     gene.symbol=gene.symb, barcodes=cell.ids)
 #' list.files(tmpdir)
 #'
 #' # Creating a version 3 HDF5 file:
 #' tmph5 <- tempfile(fileext=".h5")
-#' write10xCounts(tmph5, my.counts, gene.id=gene.ids, 
+#' writeCounts(tmph5, my.counts, gene.id=gene.ids, 
 #'     gene.symbol=gene.symb, barcodes=cell.ids, version='3')
 #' 
 #' @references
@@ -91,85 +92,191 @@
 #' \url{https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/advanced/h5_matrices}
 #' 
 #' @export
-write10xCounts <- function(path, x, barcodes=colnames(x), gene.id=rownames(x), gene.symbol=gene.id, gene.type="Gene Expression",
-    overwrite=FALSE, type=c("auto", "sparse", "HDF5"), genome="unknown", version=c("2", "3"),
-    chemistry="Single Cell 3' v3", original.gem.groups=1L, library.ids="custom")
-{
+writeCounts <- function(
+    path,
+    x,
+    barcodes = colnames(x),
+    gene.id = rownames(x),
+    gene.symbol = gene.id,
+    gene.type = "Gene Expression",
+    overwrite = FALSE,
+    type = NULL,
+    version = "3",
+    genome = "unknown",
+    compressed = (version == "3"),
+    chemistry = "Single Cell 3' v3",
+    original.gem.groups = 1L,
+    library.ids = "custom",
+    num.threads = 1
+) {
+    version <- match.arg(version, c("2", "3"))
+
     # Doing all the work on a temporary location next to 'path', as we have permissions there.
     # This avoids problems with 'path' already existing.
     temp.path <- tempfile(tmpdir=dirname(path)) 
     on.exit({ 
-        if (file.exists(temp.path)) { unlink(temp.path, recursive=TRUE) } 
+        if (file.exists(temp.path)) {
+            unlink(temp.path, recursive=TRUE)
+        } 
     })
 
     # Checking the values.
-    if (length(gene.id)!=length(gene.symbol) || length(gene.id)!=nrow(x)) {
+    if (length(gene.id) != length(gene.symbol) || length(gene.id) != nrow(x)) {
         stop("lengths of 'gene.id' and 'gene.symbol' must be equal to 'nrow(x)'")
     }
-    if (ncol(x)!=length(barcodes)) { 
+    if (ncol(x) != length(barcodes)) { 
         stop("'barcodes' must of of the same length as 'ncol(x)'")
     }
 
     # Determining what format to save in.
-    version <- match.arg(version)
-    type <- .type_chooser(path, match.arg(type))
-    if (type=="sparse") {
-        .write_sparse(temp.path, x, barcodes, gene.id, gene.symbol, gene.type, version=version)
+    if (is.null(type)) {
+        if (endsWith(path, ".h5")) {
+            type <- "hdf5"
+        } else {
+            type <- "mtx"
+        }
+    }
+
+    if (type == "mtx" || type == "prefix") {
+        prefix <- NULL
+        if (type == "prefix") {
+            prefix <- basename(path)
+        }
+
+        .write_sparse(
+            x = x,
+            path = temp.path,
+            barcodes = barcodes,
+            gene.id = gene.id,
+            gene.symbol = gene.symbol,
+            gene.type = gene.type,
+            version = version,
+            compressed = compressed,
+            prefix = prefix,
+            num.threads = num.threads
+        )
     } else {
-        .write_hdf5(temp.path, genome, x, barcodes, gene.id, gene.symbol, gene.type, version=version)
+        .write_hdf5(
+            x = x,
+            path = temp.path,
+            genome = genome,
+            barcodes = barcodes,
+            gene.id = gene.id,
+            gene.symbol = gene.symbol,
+            gene.type = gene.type,
+            version = version,
+            chemistry = chemistry,
+            original.gem.groups = original.gem.groups,
+            library.ids = library.ids,
+            num.threads = num.threads
+        )
     }
 
     # We don't put this at the top as the write functions might fail; 
     # in which case, we would have deleted the existing 'path' for nothing.
-    if (overwrite) {
-        unlink(path, recursive=TRUE)
-    } else if (file.exists(path)) { 
-        stop("specified 'path' already exists")
+    if (type == "prefix") {
+        final.dir <- dirname(path)
+        created <- list.files(temp.path)
+        common <- intersect(list.files(final.dir), created)
+        if (overwrite) {
+            unlink(common, recursive=TRUE)
+        } else if (length(common)) {
+            stop("files with the specified 'path' prefix already exist")
+        }
+        file.rename(file.path(temp.path, created), file.path(final.dir, created))
+    } else {
+        if (overwrite) {
+            unlink(path, recursive=TRUE)
+        } else if (file.exists(path)) { 
+            stop("specified 'path' already exists")
+        }
+        file.rename(temp.path, path)
     }
-    file.rename(temp.path, path)
-    return(invisible(TRUE))
+
+    invisible(NULL)
 }
 
 #' @importFrom utils write.table
-#' @importFrom Matrix writeMM
 #' @importFrom R.utils gzip
-.write_sparse <- function(path, x, barcodes, gene.id, gene.symbol, gene.type, version="2") {
-    dir.create(path, showWarnings=FALSE)
-    gene.info <- data.frame(gene.id, gene.symbol, stringsAsFactors=FALSE)
+#' @importFrom DelayedArray type
+#' @importFrom beachmat initializeCpp
+.write_sparse <- function(
+    path,
+    x,
+    barcodes,
+    gene.id,
+    gene.symbol,
+    gene.type,
+    version,
+    compressed,
+    prefix,
+    num.threads
+) {
+    gene.info <- data.frame(ID = gene.id, Symbol = gene.symbol, stringsAsFactors=FALSE)
 
-    if (version=="3") {
-        gene.info$gene.type <- rep(gene.type, length.out=nrow(gene.info))
-        mhandle <- file.path(path, "matrix.mtx")
-        bhandle <- gzfile(file.path(path, "barcodes.tsv.gz"), open="wb")
-        fhandle <- gzfile(file.path(path, "features.tsv.gz"), open="wb")
+    bname <- "barcodes.tsv"
+    mname <- "matrix.mtx"
+    if (version == "3") {
+        gene.info$Type <- rep(gene.type, length.out=nrow(gene.info))
+        fname <- "features.tsv"
+    } else {
+        fname <- "genes.tsv"
+    }
+
+    dir.create(path, recursive=TRUE, showWarnings=FALSE)
+    if (!is.null(prefix)) {
+        fname <- paste0(prefix, fname)
+        bname <- paste0(prefix, bname)
+        mname <- paste0(prefix, mname)
+    }
+
+    fpath <- file.path(path, fname)
+    bpath <- file.path(path, bname)
+    mpath <- file.path(path, mname)
+
+    if (compressed) {
+        mpath <- paste0(mpath, ".gz")
+        bhandle <- gzfile(paste0(bpath, ".gz"), open="wb")
+        fhandle <- gzfile(paste0(fpath, ".gz"), open="wb")
         on.exit({
             close(bhandle)
             close(fhandle)
         })
     } else {
-        mhandle <- file.path(path, "matrix.mtx")
-        bhandle <- file.path(path, "barcodes.tsv")
-        fhandle <- file.path(path, "genes.tsv")
+        bhandle <- bpath
+        fhandle <- fpath
     }
 
-    writeMM(x, file=mhandle)
     write(barcodes, file=bhandle)
     write.table(gene.info, file=fhandle, row.names=FALSE, col.names=FALSE, quote=FALSE, sep="\t")
 
-    if (version=="3") {
-        # Annoyingly, writeMM doesn't take connection objects.
-        gzip(mhandle)
-    }
-
-    return(NULL)
+    write_mm(
+        initializeCpp(x),
+        mpath,
+        compressed = compressed,
+        is_integer = (type(x) == "integer"),
+        num_threads = num.threads
+    )
 }
 
+#' @importFrom beachmat initializeCpp
 #' @importFrom rhdf5 h5createFile h5createGroup h5write h5writeAttribute H5Gopen H5Fopen H5Gclose H5Fclose
 #' @importFrom methods as
 #' @importClassesFrom Matrix dgCMatrix
-.write_hdf5 <- function(path, genome, x, barcodes, gene.id, gene.symbol, gene.type, version="3",
-    chemistry="Single Cell 3' v3", original.gem.groups=1L, library.ids="custom")
-{
+.write_hdf5 <- function(
+    path,
+    genome,
+    x,
+    barcodes,
+    gene.id,
+    gene.symbol,
+    gene.type,
+    version,
+    chemistry,
+    original.gem.groups,
+    library.ids,
+    num.threads
+) {
     path <- path.expand(path) # protect against tilde's.
     h5createFile(path)
 
@@ -196,34 +303,29 @@ write10xCounts <- function(path, x, barcodes=colnames(x), gene.id=rownames(x), g
             file=path, name=paste0(group, "/features/genome"))
 
         # Writing attributes.
-        h5f <- H5Fopen(path)
-        h5g <- H5Gopen(h5f, "/")
-        h5writeAttribute(chemistry, h5obj=h5g, name="chemistry_description")
-        h5writeAttribute("matrix", h5obj=h5g, name="filetype")
-        h5writeAttribute(library.ids, h5obj=h5g, name="library_ids")
-        h5writeAttribute(original.gem.groups, h5obj=h5g, name="original_gem_groups")
-        h5writeAttribute(as.integer(version) - 1L, h5obj=h5g, name="version") # this is probably correct.
-        H5Gclose(h5g)
-        H5Fclose(h5f)
+        (function() {
+            h5f <- H5Fopen(path)
+            on.exit(H5Fclose(h5f), add=TRUE, after=FALSE)
+
+            h5g <- H5Gopen(h5f, "/")
+            on.exit(H5Gclose(h5g), add=TRUE, after=FALSE)
+
+            h5writeAttribute(chemistry, h5obj=h5g, name="chemistry_description")
+            h5writeAttribute("matrix", h5obj=h5g, name="filetype")
+            h5writeAttribute(library.ids, h5obj=h5g, name="library_ids")
+            h5writeAttribute(original.gem.groups, h5obj=h5g, name="original_gem_groups")
+            h5writeAttribute(as.integer(version) - 1L, h5obj=h5g, name="version") # this is probably correct.
+        })()
 
     } else {
         h5write(gene.id, file=path, name=paste0(group, "/genes"))
         h5write(gene.symbol, file=path, name=paste0(group, "/gene_names"))
     }
 
-    # Saving matrix information.
-    x <- as(x, "dgCMatrix")
-    h5write(x@x, file=path, name=paste0(group, "/data"))
-    h5write(dim(x), file=path, name=paste0(group, "/shape"))
-    h5write(x@i, file=path, name=paste0(group, "/indices")) # already zero-indexed.
-    h5write(x@p, file=path, name=paste0(group, "/indptr"))
-
-    return(NULL)
-}
-
-.type_chooser <- function(path, type) {
-    if (type=="auto") {
-        type <- if (grepl("\\.h5", path)) "HDF5" else "sparse"
-    }
-    type
+    write_hdf5_counts(
+        initializeCpp(x),
+        path = path,
+        group = group,
+        num_threads = num.threads
+    )
 }

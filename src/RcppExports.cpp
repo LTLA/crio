@@ -45,11 +45,39 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// write_hdf5_counts
+void write_hdf5_counts(Rcpp::RObject ptr, std::string path, std::string group, int num_threads);
+RcppExport SEXP _crio_write_hdf5_counts(SEXP ptrSEXP, SEXP pathSEXP, SEXP groupSEXP, SEXP num_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< std::string >::type path(pathSEXP);
+    Rcpp::traits::input_parameter< std::string >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
+    write_hdf5_counts(ptr, path, group, num_threads);
+    return R_NilValue;
+END_RCPP
+}
+// write_mm
+SEXP write_mm(Rcpp::RObject ptr, std::string path, bool compressed, bool is_integer, int num_threads);
+RcppExport SEXP _crio_write_mm(SEXP ptrSEXP, SEXP pathSEXP, SEXP compressedSEXP, SEXP is_integerSEXP, SEXP num_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< Rcpp::RObject >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< std::string >::type path(pathSEXP);
+    Rcpp::traits::input_parameter< bool >::type compressed(compressedSEXP);
+    Rcpp::traits::input_parameter< bool >::type is_integer(is_integerSEXP);
+    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(write_mm(ptr, path, compressed, is_integer, num_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_crio_encode_sequences", (DL_FUNC) &_crio_encode_sequences, 1},
     {"_crio_get_cell_barcodes", (DL_FUNC) &_crio_get_cell_barcodes, 3},
     {"_crio_read_mm", (DL_FUNC) &_crio_read_mm, 4},
+    {"_crio_write_hdf5_counts", (DL_FUNC) &_crio_write_hdf5_counts, 4},
+    {"_crio_write_mm", (DL_FUNC) &_crio_write_mm, 5},
     {NULL, NULL, 0}
 };
 

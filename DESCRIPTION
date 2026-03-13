@@ -15,10 +15,12 @@ Imports:
     stats,
     methods,
     Matrix,
+    beachmat,
     Rcpp,
     BiocGenerics,
     S4Vectors,
     SummarizedExperiment,
+    S4Arrays,
     HDF5Array,
     rhdf5
 Suggests: 
@@ -31,7 +33,8 @@ Suggests:
 LinkingTo:
     Rcpp,
     Rhdf5lib,
-    assorthead
+    assorthead,
+    beachmat
 biocViews: 
     SingleCell,
     Sequencing,
@@ -43,6 +46,6 @@ biocViews:
 License: GPL-3
 NeedsCompilation: yes
 VignetteBuilder: knitr
-SystemRequirements: C++11, GNU make
+SystemRequirements: C++17, GNU make
 RoxygenNote: 7.3.3
 Encoding: UTF-8
