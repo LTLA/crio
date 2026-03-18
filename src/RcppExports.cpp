@@ -20,15 +20,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// get_cell_barcodes
-Rcpp::StringVector get_cell_barcodes(std::string fname, std::string dname, Rcpp::RObject barcodelen);
-RcppExport SEXP _crio_get_cell_barcodes(SEXP fnameSEXP, SEXP dnameSEXP, SEXP barcodelenSEXP) {
+// read_cell_barcodes
+Rcpp::StringVector read_cell_barcodes(std::string fname, std::string dname, Rcpp::Nullable<Rcpp::IntegerVector> barcodelen);
+RcppExport SEXP _crio_read_cell_barcodes(SEXP fnameSEXP, SEXP dnameSEXP, SEXP barcodelenSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< std::string >::type fname(fnameSEXP);
     Rcpp::traits::input_parameter< std::string >::type dname(dnameSEXP);
-    Rcpp::traits::input_parameter< Rcpp::RObject >::type barcodelen(barcodelenSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_cell_barcodes(fname, dname, barcodelen));
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::IntegerVector> >::type barcodelen(barcodelenSEXP);
+    rcpp_result_gen = Rcpp::wrap(read_cell_barcodes(fname, dname, barcodelen));
+    return rcpp_result_gen;
+END_RCPP
+}
+// write_cell_barcodes
+SEXP write_cell_barcodes(Rcpp::StringVector barcodes, std::string fname, std::string dname);
+RcppExport SEXP _crio_write_cell_barcodes(SEXP barcodesSEXP, SEXP fnameSEXP, SEXP dnameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< Rcpp::StringVector >::type barcodes(barcodesSEXP);
+    Rcpp::traits::input_parameter< std::string >::type fname(fnameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type dname(dnameSEXP);
+    rcpp_result_gen = Rcpp::wrap(write_cell_barcodes(barcodes, fname, dname));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -46,15 +58,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // write_hdf5_counts
-void write_hdf5_counts(Rcpp::RObject ptr, std::string path, std::string group, int num_threads);
+SEXP write_hdf5_counts(Rcpp::RObject ptr, std::string path, std::string group, int num_threads);
 RcppExport SEXP _crio_write_hdf5_counts(SEXP ptrSEXP, SEXP pathSEXP, SEXP groupSEXP, SEXP num_threadsSEXP) {
 BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< Rcpp::RObject >::type ptr(ptrSEXP);
     Rcpp::traits::input_parameter< std::string >::type path(pathSEXP);
     Rcpp::traits::input_parameter< std::string >::type group(groupSEXP);
     Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
-    write_hdf5_counts(ptr, path, group, num_threads);
-    return R_NilValue;
+    rcpp_result_gen = Rcpp::wrap(write_hdf5_counts(ptr, path, group, num_threads));
+    return rcpp_result_gen;
 END_RCPP
 }
 // write_mm
@@ -74,7 +87,8 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_crio_encode_sequences", (DL_FUNC) &_crio_encode_sequences, 1},
-    {"_crio_get_cell_barcodes", (DL_FUNC) &_crio_get_cell_barcodes, 3},
+    {"_crio_read_cell_barcodes", (DL_FUNC) &_crio_read_cell_barcodes, 3},
+    {"_crio_write_cell_barcodes", (DL_FUNC) &_crio_write_cell_barcodes, 3},
     {"_crio_read_mm", (DL_FUNC) &_crio_read_mm, 4},
     {"_crio_write_hdf5_counts", (DL_FUNC) &_crio_write_hdf5_counts, 4},
     {"_crio_write_mm", (DL_FUNC) &_crio_write_mm, 5},

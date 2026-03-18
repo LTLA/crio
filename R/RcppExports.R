@@ -5,8 +5,12 @@ encode_sequences <- function(Seqs) {
     .Call('_crio_encode_sequences', PACKAGE = 'crio', Seqs)
 }
 
-get_cell_barcodes <- function(fname, dname, barcodelen) {
-    .Call('_crio_get_cell_barcodes', PACKAGE = 'crio', fname, dname, barcodelen)
+read_cell_barcodes <- function(fname, dname, barcodelen) {
+    .Call('_crio_read_cell_barcodes', PACKAGE = 'crio', fname, dname, barcodelen)
+}
+
+write_cell_barcodes <- function(barcodes, fname, dname) {
+    .Call('_crio_write_cell_barcodes', PACKAGE = 'crio', barcodes, fname, dname)
 }
 
 read_mm <- function(path, two_pass, class_name, threads) {
@@ -14,7 +18,7 @@ read_mm <- function(path, two_pass, class_name, threads) {
 }
 
 write_hdf5_counts <- function(ptr, path, group, num_threads) {
-    invisible(.Call('_crio_write_hdf5_counts', PACKAGE = 'crio', ptr, path, group, num_threads))
+    .Call('_crio_write_hdf5_counts', PACKAGE = 'crio', ptr, path, group, num_threads)
 }
 
 write_mm <- function(ptr, path, compressed, is_integer, num_threads) {
