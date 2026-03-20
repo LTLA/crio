@@ -11,12 +11,23 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // encode_sequences
-Rcpp::IntegerVector encode_sequences(Rcpp::StringVector Seqs);
-RcppExport SEXP _crio_encode_sequences(SEXP SeqsSEXP) {
+Rcpp::IntegerVector encode_sequences(Rcpp::StringVector sequences);
+RcppExport SEXP _crio_encode_sequences(SEXP sequencesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< Rcpp::StringVector >::type Seqs(SeqsSEXP);
-    rcpp_result_gen = Rcpp::wrap(encode_sequences(Seqs));
+    Rcpp::traits::input_parameter< Rcpp::StringVector >::type sequences(sequencesSEXP);
+    rcpp_result_gen = Rcpp::wrap(encode_sequences(sequences));
+    return rcpp_result_gen;
+END_RCPP
+}
+// decode_sequences
+Rcpp::StringVector decode_sequences(Rcpp::IntegerVector encoded, Rcpp::IntegerVector lengths);
+RcppExport SEXP _crio_decode_sequences(SEXP encodedSEXP, SEXP lengthsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type encoded(encodedSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type lengths(lengthsSEXP);
+    rcpp_result_gen = Rcpp::wrap(decode_sequences(encoded, lengths));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -88,6 +99,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_crio_encode_sequences", (DL_FUNC) &_crio_encode_sequences, 1},
+    {"_crio_decode_sequences", (DL_FUNC) &_crio_decode_sequences, 2},
     {"_crio_read_cell_barcodes", (DL_FUNC) &_crio_read_cell_barcodes, 3},
     {"_crio_write_cell_barcodes", (DL_FUNC) &_crio_write_cell_barcodes, 3},
     {"_crio_read_mm", (DL_FUNC) &_crio_read_mm, 4},

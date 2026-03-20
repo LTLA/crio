@@ -44,7 +44,8 @@ This contains the following fields:
 \describe{
 \item{\code{barcode}:}{Factor, the cell barcode for each molecule.
 The levels contain the universe of all known barcodes.}
-\item{\code{umi}:}{Integer, the processed UMI barcode in 2-bit encoding.} 
+\item{\code{umi}:}{Integer, the processed UMI barcode in 2-bit encoding.
+This can be converted to a sequence with \code{\link{decodeSequences}}.} 
 \item{\code{gem.group}:}{Integer, the GEM group.}
 \item{\code{feature}:}{Integer, the index of the feature to which the molecule was assigned.
 This refers to an entry in the \code{features} DataFrame, see below.}
