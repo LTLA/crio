@@ -17,7 +17,7 @@ gene.symb <- paste0(
     "-",
     sample(9, replace=TRUE, ngenes)
 )
-rowData(se)$Symbol <- gene.symb
+rowData(se)$name <- gene.symb
 colnames(se) <- paste0("BARCODE-", seq_len(ncol(my.counts)))
 
 test_that("writeCounts works correctly for sparse counts, version == 2", {
@@ -38,16 +38,16 @@ test_that("writeCounts works correctly for sparse counts, version == 2", {
     writeCounts(
         path=tmpdir,
         se, 
-        feature.id.field="Symbol",
+        feature.id.field="name",
         feature.name.field=NULL,
         barcode.field="alternative",
         overwrite=TRUE,
         version="2"
     )
     reloaded <- readCounts(tmpdir)
-    expect_identical(reloaded$Barcode, colData(se)$alternative)
-    expect_identical(rowData(reloaded)$ID, gene.symb)
-    expect_identical(rowData(reloaded)$Symbol, rownames(se))
+    expect_identical(reloaded$barcode, colData(se)$alternative)
+    expect_identical(rowData(reloaded)$id, gene.symb)
+    expect_identical(rowData(reloaded)$name, rownames(se))
 })
 
 test_that("readCounts works correctly for sparse counts, version == 2", {
@@ -61,10 +61,10 @@ test_that("readCounts works correctly for sparse counts, version == 2", {
     colnames(alt.counts) <- NULL
 
     expect_equal(counts(sce10x), alt.counts)
-    expect_identical(rowData(sce10x)$ID, rownames(se))
-    expect_identical(rowData(sce10x)$Symbol, gene.symb)
-    expect_identical(sce10x$Sample, rep(tmpdir, ncol(my.counts)))
-    expect_identical(sce10x$Barcode, colnames(se))
+    expect_identical(rowData(sce10x)$id, rownames(se))
+    expect_identical(rowData(sce10x)$name, gene.symb)
+    expect_identical(sce10x$sample, rep(tmpdir, ncol(my.counts)))
+    expect_identical(sce10x$barcode, colnames(se))
 
     # Trying all the options for reading matrices. 
     sce10x.tp <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE))
@@ -103,7 +103,7 @@ test_that("readCounts works correctly with chromosomal positions in the features
     writeCounts(path=tmpdir, se, version="2")
 
     feats <- read.delim(file.path(tmpdir, "genes.tsv"), header=FALSE)
-    feats$Type <- sample(c("protein", "foo"), nrow(feats), replace=TRUE)
+    feats$type <- sample(c("protein", "foo"), nrow(feats), replace=TRUE)
     feats$Chr <- sample(c("chrA", "chrB", "chrC"), nrow(feats), replace=TRUE)
     feats$Start <- sample(1000, nrow(feats), replace=TRUE)
     feats$End <- feats$Start + sample(100, nrow(feats), replace=TRUE)
@@ -112,7 +112,7 @@ test_that("readCounts works correctly with chromosomal positions in the features
     sce10x <- readCounts(tmpdir)
     expect_s4_class(rowRanges(sce10x), "GRanges")
     expect_identical(start(rowRanges(sce10x)), feats$Start)
-    expect_identical(rowRanges(sce10x)$Type, feats$Type)
+    expect_identical(rowRanges(sce10x)$type, feats$type)
 
     # Empty seqnames for mitochondria are replaced with chrM.
     replace <- 1:10
@@ -130,28 +130,28 @@ test_that("readCounts populates column names", {
 
     # Checking that column names work.
     sce10x3 <- readCounts(tmpdir, column.names=TRUE)
-    expect_identical(colnames(sce10x3), sce10x3$Barcode)
+    expect_identical(colnames(sce10x3), sce10x3$barcode)
 
     sce10x4 <- readCounts(c(tmpdir, tmpdir), column.names=TRUE)
     expect_identical(colnames(sce10x4), paste0(rep(1:2, each=ncol(sce10x3)), "_", colnames(sce10x3)))
 
     # Checking that sample names work.
     sce10x5 <- readCounts(c(B=tmpdir, C=tmpdir))
-    expect_identical(colData(sce10x5)$Sample, rep(c("B", "C"), each=ncol(sce10x3)))
-    expect_identical(metadata(sce10x5)$Samples, c(B=tmpdir, C=tmpdir)) 
+    expect_identical(colData(sce10x5)$sample, rep(c("B", "C"), each=ncol(sce10x3)))
+    expect_identical(metadata(sce10x5)$samples, c(B=tmpdir, C=tmpdir)) 
 })
 
 test_that("readCounts works for sparse counts with odd inputs", {
     tmpdir <- tempfile()
     gene.symb2 <- paste0(gene.symb, sample(c("#", "'", '"', ""), length(gene.symb), replace=TRUE)) # full of weird elements.
-    rowData(se)$Symbol <- gene.symb2
+    rowData(se)$name <- gene.symb2
     writeCounts(path=tmpdir, se, version="3")
     sce10x <- readCounts(tmpdir)
 
     expect_equal(assay(sce10x, withDimnames=FALSE), my.counts)
-    expect_identical(colData(sce10x)$Barcode, colnames(se))
-    expect_identical(rowData(sce10x)$ID, rownames(se))
-    expect_identical(rowData(sce10x)$Symbol, gene.symb2)
+    expect_identical(colData(sce10x)$barcode, colnames(se))
+    expect_identical(rowData(sce10x)$id, rownames(se))
+    expect_identical(rowData(sce10x)$name, gene.symb2)
 })
 
 test_that("writeCounts works correctly for sparse counts, version == 3", {
@@ -162,7 +162,7 @@ test_that("writeCounts works correctly for sparse counts, version == 3", {
     expect_identical(out[,3], rep("Gene Expression", ngenes)) # default types used.
 
     new.types <- sample(c("Gene Expression", "Antibody", "CUSTOM"), ngenes, replace=TRUE)
-    rowData(se)$Type <- new.types
+    rowData(se)$type <- new.types
     writeCounts(path=tmpdir, se, version="3", overwrite=TRUE)
     out <- read.table(file.path(tmpdir, "features.tsv.gz"), stringsAsFactors=FALSE, sep="\t")
     expect_identical(out[,3], new.types)
@@ -171,7 +171,7 @@ test_that("writeCounts works correctly for sparse counts, version == 3", {
 test_that("readCounts works correctly for sparse counts, version == 3", {
     tmpdir <- tempfile()
     gene.type <- sample(LETTERS, ngenes, replace=TRUE)
-    rowData(se)$Type <- gene.type
+    rowData(se)$type <- gene.type
     writeCounts(path=tmpdir, se, version="3")
 
     sce10x <- readCounts(tmpdir)
@@ -180,11 +180,11 @@ test_that("readCounts works correctly for sparse counts, version == 3", {
     colnames(alt.counts) <- NULL
 
     expect_equal(counts(sce10x), alt.counts)
-    expect_identical(rowData(sce10x)$ID, rownames(se))
-    expect_identical(rowData(sce10x)$Symbol, gene.symb)
-    expect_identical(rowData(sce10x)$Type, gene.type)
-    expect_identical(sce10x$Sample, rep(tmpdir, ncol(my.counts)))
-    expect_identical(sce10x$Barcode, colnames(se))
+    expect_identical(rowData(sce10x)$id, rownames(se))
+    expect_identical(rowData(sce10x)$name, gene.symb)
+    expect_identical(rowData(sce10x)$type, gene.type)
+    expect_identical(sce10x$sample, rep(tmpdir, ncol(my.counts)))
+    expect_identical(sce10x$barcode, colnames(se))
 
     # Works in delayed mode.
     sce10delayed <- readCounts(c(tmpdir, tmpdir), delayed=TRUE)
@@ -237,10 +237,10 @@ test_that("readCounts works correctly for HDF5 counts, version == 2", {
 
     expect_s4_class(counts(sce10x, withDimnames=FALSE), "DelayedMatrix")
     expect_equal(as.matrix(counts(sce10x, withDimnames=FALSE)), alt.counts)
-    expect_identical(rowData(sce10x)$ID, rownames(se))
-    expect_identical(rowData(sce10x)$Symbol, gene.symb)
-    expect_identical(sce10x$Sample, rep(tmph5, ncol(my.counts)))
-    expect_identical(sce10x$Barcode, colnames(se))
+    expect_identical(rowData(sce10x)$id, rownames(se))
+    expect_identical(rowData(sce10x)$name, gene.symb)
+    expect_identical(sce10x$sample, rep(tmph5, ncol(my.counts)))
+    expect_identical(sce10x$barcode, colnames(se))
 
     # Reading it in, twice; and checking it makes sense.
     sce10x2 <- readCounts(c(tmph5, tmph5))
@@ -267,7 +267,7 @@ test_that("writeCounts works correctly for HDF5 counts, version == 3", {
     # Overwriting with different genomes and types.
     genomes <- sample(c("mm9", "hg19"), ngenes, replace=TRUE)
     new.types <- sample(c("Gene Expression", "Antibody", "CUSTOM"), ngenes, replace=TRUE)
-    rowData(se)$Type <- new.types
+    rowData(se)$type <- new.types
     writeCounts(path=tmph5, genome=genomes, se, version="3", overwrite=TRUE)
 
     expect_identical(as.vector(rhdf5::h5read(tmph5, "matrix/features/feature_type")), new.types)
@@ -277,7 +277,7 @@ test_that("writeCounts works correctly for HDF5 counts, version == 3", {
 test_that("readCounts works correctly for HDF5 counts, version == 3", {
     tmph5 <- tempfile(fileext=".h5")
     gene.type <- sample(LETTERS, ngenes, replace=TRUE)
-    rowData(se)$Type <- gene.type
+    rowData(se)$type <- gene.type
     writeCounts(path=tmph5, se, version="3")
 
     sce10x <- readCounts(tmph5)
@@ -287,12 +287,12 @@ test_that("readCounts works correctly for HDF5 counts, version == 3", {
     expect_s4_class(counts(sce10x, withDimnames=FALSE), "DelayedMatrix")
     expect_equal(as.matrix(counts(sce10x, withDimnames=FALSE)), alt.counts)
 
-    expect_identical(rowData(sce10x)$ID, rownames(se))
-    expect_identical(rowData(sce10x)$Symbol, gene.symb)
-    expect_identical(rowData(sce10x)$Type, gene.type)
+    expect_identical(rowData(sce10x)$id, rownames(se))
+    expect_identical(rowData(sce10x)$name, gene.symb)
+    expect_identical(rowData(sce10x)$type, gene.type)
 
-    expect_identical(sce10x$Sample, rep(tmph5, ncol(my.counts)))
-    expect_identical(sce10x$Barcode, colnames(se))
+    expect_identical(sce10x$sample, rep(tmph5, ncol(my.counts)))
+    expect_identical(sce10x$barcode, colnames(se))
 })
 
 test_that("readCounts works correctly for prefixes", {
@@ -311,7 +311,7 @@ test_that("readCounts works correctly for prefixes", {
     out <- readCounts(file.path(tmpdir.all, c("jelly_", "peanut_")))
     alt <- readCounts(c(tmpdir1, tmpdir2))
     expect_identical(assay(out), assay(alt))
-    expect_identical(out$Barcode, alt$Barcode)
+    expect_identical(out$barcode, alt$barcode)
 })
 
 test_that("readCounts works correctly with mismatching features", {
@@ -339,7 +339,7 @@ test_that("readCounts, use gene symbols as row names", {
     # Now trying with duplicated symbols.
     gene.symb2 <- c(gene.symb[1], gene.symb[1], gene.symb[-c(1,2)])
     tmpdir <- tempfile()
-    rowData(se)$Symbol <- gene.symb2
+    rowData(se)$name <- gene.symb2
     writeCounts(path=tmpdir, se, version="3")
 
     sce10x <- readCounts(tmpdir, row.names = "symbol")

@@ -20,14 +20,14 @@
 #' The first entry of this list is \code{molecules}, a \link[S4Vectors]{DataFrame} where each row corresponds to a single transcript molecule.
 #' This contains the following fields:
 #' \describe{
-#' \item{\code{Barcode}:}{Factor, the cell barcode for each molecule.
+#' \item{\code{barcode}:}{Factor, the cell barcode for each molecule.
 #' The levels contain the universe of all known barcodes.}
-#' \item{\code{Umi}:}{Integer, the processed UMI barcode in 2-bit encoding.} 
-#' \item{\code{GemGroup}:}{Integer, the GEM group.}
-#' \item{\code{Feature}:}{Integer, the index of the feature to which the molecule was assigned.
+#' \item{\code{umi}:}{Integer, the processed UMI barcode in 2-bit encoding.} 
+#' \item{\code{gem.group}:}{Integer, the GEM group.}
+#' \item{\code{feature}:}{Integer, the index of the feature to which the molecule was assigned.
 #' This refers to an entry in the \code{features} DataFrame, see below.}
-#' \item{\code{Count}:}{Integer, the number of reads mapped to this molecule.}
-#' \item{\code{Library}:}{Integer, the library index in cases where multiple libraries are present in the same file.
+#' \item{\code{count}:}{Integer, the number of reads mapped to this molecule.}
+#' \item{\code{library}:}{Integer, the library index in cases where multiple libraries are present in the same file.
 #' Only reported when \code{version="3"}.}
 #' }
 #' A field will not be present in the DataFrame if the corresponding \code{get.*} argument is \code{FALSE}, 
@@ -126,18 +126,18 @@ readMoleculeInformation <- function(
         if (version=="3") {
             all.barcodes <- as.vector(h5read(path, "barcodes"))
             barcodes.idx <- as.vector(h5read(path, "barcode_idx")) + 1L
-            data$Barcode <- factor(all.barcodes[barcodes.idx], all.barcodes)
+            data$barcode <- factor(all.barcodes[barcodes.idx], all.barcodes)
         } else {
-            data$Barcode <- factor(read_cell_barcodes(path, "barcode", barcode.length))
+            data$barcode <- factor(read_cell_barcodes(path, "barcode", barcode.length))
         }
     }
 
     if (get.umi) {
-        data$Umi <- as.vector(h5read(path, "umi"))
+        data$umi <- as.vector(h5read(path, "umi"))
     }
 
     if (get.gem) {
-        data$GemGroup <- as.vector(h5read(path, "gem_group"))
+        data$gem.group <- as.vector(h5read(path, "gem_group"))
     }
 
     if (get.feature || !keep.unmapped) {
@@ -147,7 +147,7 @@ readMoleculeInformation <- function(
         } else {
             dname <- "gene"
         } 
-        data$Feature <- as.vector(h5read(path, dname)) + 1L 
+        data$feature <- as.vector(h5read(path, dname)) + 1L 
     }
 
     if (get.count) {
@@ -156,11 +156,11 @@ readMoleculeInformation <- function(
         } else {
             dname <- "reads"
         }
-        data$Count <- as.vector(h5read(path, dname))
+        data$count <- as.vector(h5read(path, dname))
     }
 
     if (version == "3" && get.library) {
-        data$Library <- as.vector(h5read(path, "library_idx")) + 1L
+        data$library <- as.vector(h5read(path, "library_idx")) + 1L
     }
 
     if (length(data) == 0) {
@@ -191,18 +191,18 @@ readMoleculeInformation <- function(
     feat.ids <- as.vector(h5read(path, dname))
 
     if (!keep.unmapped) {
-        keep <- (data$Feature <= length(feat.ids))
+        keep <- (data$feature <= length(feat.ids))
         if (!get.feature) {
-            data$Feature <- NULL
+            data$feature <- NULL
         }
         data <- data[keep,,drop=FALSE]
     }
 
     # Don't define the total cell pool here, as higher level functions may want to use gem_group.
-    output <- list(molecules = data, features = DataFrame(ID = feat.ids))
+    output <- list(molecules = data, features = DataFrame(id = feat.ids))
 
     if (version == '3') {
-        output$features$Type <- as.vector(h5read(path, "features/feature_type"))
+        output$features$type <- as.vector(h5read(path, "features/feature_type"))
 
         if (extract.library.info) {
             lib.info <- as.vector(h5read(path, "library_info"))

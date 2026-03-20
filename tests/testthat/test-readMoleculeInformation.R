@@ -7,7 +7,7 @@ test_that("readMoleculeInformation works correctly", {
     writeMoleculeInformation(tmp, simulated)
     roundtrip <- readMoleculeInformation(tmp) 
 
-    keep <- simulated$molecules$Feature <= nrow(simulated$features)
+    keep <- simulated$molecules$feature <= nrow(simulated$features)
     expect_identical(simulated$molecules[keep,], roundtrip$molecules)
     expect_identical(simulated$features, roundtrip$features)
     expect_identical(simulated$libraries, roundtrip$libraries)
@@ -22,26 +22,26 @@ test_that("partial extraction in readMoleculeInformation works correctly", {
     simulated <- simulateMoleculeInformation()
     writeMoleculeInformation(tmp, simulated)
 
-    keep <- simulated$molecules$Feature <= nrow(simulated$features)
+    keep <- simulated$molecules$feature <= nrow(simulated$features)
     full <- readMoleculeInformation(tmp)
 
     # Discounting the GEM.
     subbed <- readMoleculeInformation(tmp, get.gem=FALSE)
     copy <- simulated
     copy$molecules <- copy$molecules[keep,]
-    copy$molecules$GemGroup <- NULL
+    copy$molecules$gem.group <- NULL
     expect_identical(subbed, copy)
 
     # Discounting the genes. 
     subbed <- readMoleculeInformation(tmp, get.feature=FALSE)
     copy <- simulated
     copy$molecules <- copy$molecules[keep,]
-    copy$molecules$Feature <- NULL
+    copy$molecules$feature <- NULL
     expect_identical(subbed, copy)
 
     fullun <- readMoleculeInformation(tmp, keep.unmapped=TRUE)
     subbed <- readMoleculeInformation(tmp, get.feature=FALSE, keep.unmapped=TRUE)
-    fullun$molecules$Feature <- NULL
+    fullun$molecules$feature <- NULL
     expect_identical(subbed, fullun)
 
     # Discounting everything.
@@ -78,7 +78,7 @@ test_that("readMoleculeInformation works with older CellRanger versions", {
     expect_error(readMoleculeInformation(tmp, keep.unmapped=TRUE, barcode.length=c(1,2,3)), 'scalar')
 
     lowered <- restored
-    lowered$molecules$Barcode <- tolower(lowered$molecules$Barcode)
+    lowered$molecules$barcode <- tolower(lowered$molecules$barcode)
     restored <- readMoleculeInformation(tmp, keep.unmapped=TRUE)
     expect_identical(restored, simulated)
 
@@ -89,27 +89,27 @@ test_that("readMoleculeInformation works with older CellRanger versions", {
     tmp <- tempfile(fileext=".h5")
     writeMoleculeInformation(tmp, simulated, version="2")
     restored <- readMoleculeInformation(tmp, keep.unmapped=TRUE) # auto-detects the version.
-    restored$molecules$Barcode <- factor(paste0(restored$molecules$Barcode, "-1"))
+    restored$molecules$barcode <- factor(paste0(restored$molecules$barcode, "-1"))
 
     copy <- simulated 
-    copy$molecules$Library <- NULL
-    copy$features$Type <- NULL
+    copy$molecules$library <- NULL
+    copy$features$type <- NULL
     copy$libraries <- NULL
     expect_identical(restored, copy)
 
     # Checking various error conditions. 
     failed <- simulated
-    levels(failed$molecules$Barcode)[1] <- ""
+    levels(failed$molecules$barcode)[1] <- ""
     ftmp <- tempfile()
     expect_error(writeMoleculeInformation(ftmp, failed, version="2"))
 
     failed <- simulated
-    levels(failed$molecules$Barcode)[1] <- strrep("A", 50)
+    levels(failed$molecules$barcode)[1] <- strrep("A", 50)
     ftmp <- tempfile()
     expect_error(writeMoleculeInformation(ftmp, failed, version="2"))
 
     failed <- simulated
-    levels(failed$molecules$Barcode)[1] <- "whee"
+    levels(failed$molecules$barcode)[1] <- "whee"
     ftmp <- tempfile()
     expect_error(writeMoleculeInformation(ftmp, failed, version="2"))
 })

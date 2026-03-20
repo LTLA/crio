@@ -10,8 +10,8 @@ writeCounts(
   assay = 1L,
   barcode.field = NULL,
   feature.id.field = NULL,
-  feature.name.field = "Symbol",
-  feature.type.field = "Type",
+  feature.name.field = "name",
+  feature.type.field = "type",
   overwrite = FALSE,
   type = NULL,
   version = "3",
@@ -40,6 +40,7 @@ If \code{NULL}, the row names of \code{x} are assumed to contain the feature IDs
 If \code{NULL}, the row names of \code{x} are assumed to contain the feature names.}
 
 \item{feature.type.field}{String containing the name of the \code{\link[SummarizedExperiment]{rowData}} column containing the feature types.
+If this name is not present in the \code{rowData}, the type defaults to \code{"Gene Expression"} for all rows of \code{x}.
 Only used when \code{version="3"}.}
 
 \item{overwrite}{A logical scalar specifying whether \code{path} should be overwritten if it already exists.}
@@ -96,8 +97,8 @@ library(SummarizedExperiment)
 se <- SummarizedExperiment(my.counts)
 colnames(se) <- paste0("BARCODE-", seq_len(ncol(my.counts)))
 rownames(se) <- paste0("ENSG0000", seq_len(nrow(my.counts)))
-rowData(se)$Symbol <- paste0("GENE", seq_len(nrow(my.counts)))
-rowData(se)$Type <- "Gene Expression"
+rowData(se)$name <- paste0("GENE", seq_len(nrow(my.counts)))
+rowData(se)$type <- "Gene Expression"
 
 # Writing this to file:
 tmpdir <- tempfile()

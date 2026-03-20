@@ -55,51 +55,51 @@ writeMoleculeInformation <- function(
     features <- data$features
     libraries <- data$libraries
 
-    stopifnot(!is.null(molecules$Barcode))
+    stopifnot(!is.null(molecules$barcode))
     if (version == "2") {
-        barcodes <- as.character(molecules$Barcode)
+        barcodes <- as.character(molecules$barcode)
         barcodes <- sub("-.*", "", barcodes) # remove any gem groups.
         write_cell_barcodes(barcodes, temp, "barcode")
     } else {
-        actual.barcodes <- as.factor(molecules$Barcode) # convert it to a factor but only if it wasn't already one.
+        actual.barcodes <- as.factor(molecules$barcode) # convert it to a factor but only if it wasn't already one.
         h5write_type(as.integer(actual.barcodes) - 1L, temp, group = NULL, name = "barcode_idx", type = "H5T_NATIVE_UINT64") 
         h5write(levels(actual.barcodes), temp, "barcodes")
     }
 
-    stopifnot(!is.null(molecules$Feature))
+    stopifnot(!is.null(molecules$feature))
     if (version == "2") {
         feature.field <- "gene"
     } else {
         feature.field <- "feature_idx"
     }
-    h5write_type(molecules$Feature - 1L, temp, group = NULL, name = feature.field, type = "H5T_NATIVE_UINT32")
+    h5write_type(molecules$feature - 1L, temp, group = NULL, name = feature.field, type = "H5T_NATIVE_UINT32")
 
-    stopifnot(!is.null(molecules$Count))
+    stopifnot(!is.null(molecules$count))
     if (version == "2") {
         read.field <- "reads"
     } else {
         read.field <- "count"
     }
-    h5write_type(molecules$Count, temp, group = NULL, name = read.field, type = "H5T_NATIVE_UINT32")
+    h5write_type(molecules$count, temp, group = NULL, name = read.field, type = "H5T_NATIVE_UINT32")
 
-    stopifnot(!is.null(molecules$Umi))
-    h5write_type(molecules$Umi, temp, group = NULL, name = "umi", type = "H5T_NATIVE_UINT32")
-    stopifnot(!is.null(molecules$GemGroup))
-    h5write_type(molecules$GemGroup, temp, group = NULL, name = "gem_group", type = "H5T_NATIVE_UINT16")
+    stopifnot(!is.null(molecules$umi))
+    h5write_type(molecules$umi, temp, group = NULL, name = "umi", type = "H5T_NATIVE_UINT32")
+    stopifnot(!is.null(molecules$gem.group))
+    h5write_type(molecules$gem.group, temp, group = NULL, name = "gem_group", type = "H5T_NATIVE_UINT16")
 
-    stopifnot(!is.null(features$ID))
+    stopifnot(!is.null(features$id))
     if (version == "2") {
-        h5write(features$ID, temp, "gene_ids")
+        h5write(features$id, temp, "gene_ids")
     } else {
-        stopifnot(!is.null(features$Type))
+        stopifnot(!is.null(features$type))
         h5createGroup(temp, "features")
-        h5write(features$ID, temp, "features/id")
-        h5write(features$Type, temp, "features/feature_type")
+        h5write(features$id, temp, "features/id")
+        h5write(features$type, temp, "features/feature_type")
     }
 
     if (version == "3") {
-        stopifnot(!is.null(molecules$Library))
-        h5write_type(molecules$Library - 1L, temp, group = NULL, name = "library_idx", type = "H5T_NATIVE_UINT16")
+        stopifnot(!is.null(molecules$library))
+        h5write_type(molecules$library - 1L, temp, group = NULL, name = "library_idx", type = "H5T_NATIVE_UINT16")
         h5write(as.character(toJSON(libraries, auto_unbox=TRUE)), temp, "library_info")
     }
 
@@ -138,13 +138,13 @@ simulateMoleculeInformation <- function(
         barcodes <- sprintf("%s-%s", barcodes, gem_group)
     }
 
-    mol.info <- DataFrame(Barcode = factor(barcodes), Umi = umi, GemGroup = gem_group, Feature = feature, Count = reads)
-    feature.info <- DataFrame(ID = sprintf("FEATURE-%s", seq_len(num.features)))
+    mol.info <- DataFrame(barcode = factor(barcodes), umi = umi, gem.group = gem_group, feature = feature, count = reads)
+    feature.info <- DataFrame(id = sprintf("FEATURE-%s", seq_len(num.features)))
     output <- list(molecules = mol.info, features = feature.info)
 
     if (version == "3") {
-        output$features$Type <- rep("Gene Expression", nrow(output$features))
-        output$molecules$Library <- mol.info$GemGroup
+        output$features$type <- rep("Gene Expression", nrow(output$features))
+        output$molecules$library <- mol.info$gem.group
         output$libraries <- lapply(seq_len(num.gem.groups), function(i) {
             list(library_type = "unknown", library_id = i - 1L, gem_group = i)
         })

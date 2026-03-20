@@ -42,14 +42,14 @@ A named list containing molecule information.
 The first entry of this list is \code{molecules}, a \link[S4Vectors]{DataFrame} where each row corresponds to a single transcript molecule.
 This contains the following fields:
 \describe{
-\item{\code{Barcode}:}{Factor, the cell barcode for each molecule.
+\item{\code{barcode}:}{Factor, the cell barcode for each molecule.
 The levels contain the universe of all known barcodes.}
-\item{\code{Umi}:}{Integer, the processed UMI barcode in 2-bit encoding.} 
-\item{\code{GemGroup}:}{Integer, the GEM group.}
-\item{\code{Feature}:}{Integer, the index of the feature to which the molecule was assigned.
+\item{\code{umi}:}{Integer, the processed UMI barcode in 2-bit encoding.} 
+\item{\code{gem.group}:}{Integer, the GEM group.}
+\item{\code{feature}:}{Integer, the index of the feature to which the molecule was assigned.
 This refers to an entry in the \code{features} DataFrame, see below.}
-\item{\code{Count}:}{Integer, the number of reads mapped to this molecule.}
-\item{\code{Library}:}{Integer, the library index in cases where multiple libraries are present in the same file.
+\item{\code{count}:}{Integer, the number of reads mapped to this molecule.}
+\item{\code{library}:}{Integer, the library index in cases where multiple libraries are present in the same file.
 Only reported when \code{version="3"}.}
 }
 A field will not be present in the DataFrame if the corresponding \code{get.*} argument is \code{FALSE}, 

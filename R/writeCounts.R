@@ -67,8 +67,8 @@
 #' se <- SummarizedExperiment(my.counts)
 #' colnames(se) <- paste0("BARCODE-", seq_len(ncol(my.counts)))
 #' rownames(se) <- paste0("ENSG0000", seq_len(nrow(my.counts)))
-#' rowData(se)$Symbol <- paste0("GENE", seq_len(nrow(my.counts)))
-#' rowData(se)$Type <- "Gene Expression"
+#' rowData(se)$name <- paste0("GENE", seq_len(nrow(my.counts)))
+#' rowData(se)$type <- "Gene Expression"
 #' 
 #' # Writing this to file:
 #' tmpdir <- tempfile()
@@ -104,8 +104,8 @@ writeCounts <- function(
     assay = 1L,
     barcode.field = NULL, 
     feature.id.field = NULL,
-    feature.name.field = "Symbol",
-    feature.type.field = "Type",
+    feature.name.field = "name",
+    feature.type.field = "type",
     overwrite = FALSE,
     type = NULL,
     version = "3",
@@ -253,12 +253,12 @@ writeCounts <- function(
     prefix,
     num.threads
 ) {
-    gene.info <- data.frame(ID = feature.ids, Symbol = feature.names, stringsAsFactors=FALSE)
+    gene.info <- data.frame(id = feature.ids, name = feature.names, stringsAsFactors=FALSE)
 
     bname <- "barcodes.tsv"
     mname <- "matrix.mtx"
     if (version == "3") {
-        gene.info$Type <- feature.types
+        gene.info$type <- feature.types
         fname <- "features.tsv"
     } else {
         fname <- "genes.tsv"

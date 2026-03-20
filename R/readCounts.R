@@ -11,8 +11,8 @@
 #' In both cases, the list or vector can be named, in which case the names are used to identify each sample in the output object.
 #' If unnamed, the sample identity is set to the path instead.
 #' @param column.names Boolean indicating whether the columns of the output object should be named with the cell barcodes.
-#' @param row.names String specifying whether to use Ensembl IDs ("ID") or gene symbols ("Symbol") as row names. 
-#' For symbols, the Ensembl ID will be appended to disambiguate rows where the same symbol corresponds to multiple Ensembl IDs.
+#' @param row.names String specifying whether to use Ensembl ids ("id") or gene symbols ("name") as row names. 
+#' For symbols, the Ensembl id will be appended to disambiguate rows where the same symbol corresponds to multiple Ensembl ids.
 #' @param delayed Boolean indicating whether sparse matrices should be wrapped in \link[DelayedArray]{DelayedArray}s before combining.
 #' This saves memory by avoiding the creation of a new matrix; it also avoids integer overflow for \link[Matrix]{dgCMatrix} instances.
 #' Only relevant for multiple \code{samples}.
@@ -58,12 +58,12 @@
 #' @return 
 #' For \code{readCounts}, a \link[SingleCellExperiment]{SingleCellExperiment} object containing count data for each genomic feature (row) and cell (column) across all \code{samples}.
 #' \itemize{
-#' \item The \code{\link[SummarizedExperiment]{rowData}} contains the \code{"ID"} and \code{"Symbol"} columns.
+#' \item The \code{\link[SummarizedExperiment]{rowData}} contains the \code{"id"} and \code{"name"} columns.
 #' The former is the gene identifier (usually Ensembl), while the latter is the gene name.
-#' If \code{version="3"}, it will also contain the \code{"Type"} field specifying the type of feature (e.g., gene, antibody tag, CRISPR guide).
+#' If \code{version="3"}, it will also contain the \code{"type"} field specifying the type of feature (e.g., gene, antibody tag, CRISPR guide).
 #' \item The \code{\link[SummarizedExperiment]{rowRanges}} contains the genomic coordinates for each gene.
 #' Only provided for \code{version="3"}, 
-#' \item The \code{\link[SummarizedExperiment]{colData}} will contain the \code{"Sample"} and \code{"Barcode"} columns.
+#' \item The \code{\link[SummarizedExperiment]{colData}} will contain the \code{"sample"} and \code{"barcode"} columns.
 #' The former contains the name of the sample (or if not supplied, the path in \code{samples}) from which each column was obtained.
 #' The latter contains the cell barcode sequence and GEM group for each cell library. 
 #' \item Rows are named with the gene identifier.
@@ -79,7 +79,7 @@
 #' \item If multiple samples are present, the class of the matrix is determined by the return type of \code{cbind} on the per-sample matrices.
 #' This can be forced to be a \link[DelayedArray]{DelayedMatrix} by setting \code{delayed=TRUE}. 
 #' }
-#' \item The \code{\link[S4Vectors]{metadata}} contains a \code{"Samples"} field, containing the input \code{samples} character vector.
+#' \item The \code{\link[S4Vectors]{metadata}} contains a \code{"samples"} field, containing the input \code{samples} character vector.
 #' }
 #'
 #' For \code{configureSampleForReadCounts}, a list of configuration parameters for each sample.
@@ -176,12 +176,12 @@ readCounts <- function(
 
         rr <- current$gene.info
         if (row.names == "id") {
-            rns <- rr$ID
+            rns <- rr$id
         } else {
-            rns <- rr$Symbol
+            rns <- rr$name
             if (anyDuplicated(rns)) {
                 dup.name <- rns %in% rns[duplicated(rns)]
-                rns[dup.name] <- paste0(rns[dup.name], "_", rr$ID[dup.name])
+                rns[dup.name] <- paste0(rns[dup.name], "_", rr$id[dup.name])
             }
         }
 
@@ -190,8 +190,8 @@ readCounts <- function(
 
         cell.names <- current$cell.names
         cell_info_list[[i]] <- DataFrame(
-            Sample = rep(sample.names[i], length(cell.names)), 
-            Barcode = cell.names,
+            sample = rep(sample.names[i], length(cell.names)), 
+            barcode = cell.names,
             row.names=NULL
         )
     }
@@ -228,10 +228,10 @@ readCounts <- function(
     cell_info <- do.call(rbind, cell_info_list)
     if (column.names) {
         if (nsets == 1L) {
-            cnames <- cell_info$Barcode
+            cnames <- cell_info$barcode
         } else {
             sid <- rep(seq_along(cell_info_list), vapply(cell_info_list, nrow, 1L))
-            cnames <- paste0(sid, "_", cell_info$Barcode)
+            cnames <- paste0(sid, "_", cell_info$barcode)
         }
         colnames(full_data) <- cnames
     }
@@ -240,7 +240,7 @@ readCounts <- function(
         list(counts = full_data),
         rowData = gene_info,
         colData = cell_info,
-        metadata=list(Samples=sample.paths)
+        metadata=list(samples=sample.paths)
     )
 }
 
@@ -343,20 +343,20 @@ configureSampleForReadCounts <- function(
     matrix.loc <- .check_for_compressed(matrix.loc, compressed)
 
     gene.info <- read.delim(gene.loc, header=FALSE, stringsAsFactors=FALSE, quote="", comment.char="")
-    possible.names <- c("ID", "Symbol", "Type", "Chromosome", "Start", "End")
+    possible.names <- c("id", "name", "type", "chromosome", "start", "end")
     colnames(gene.info) <- head(possible.names, ncol(gene.info))
 
     if (ncol(gene.info) > 3) {
         # Default ARC-seq reference seems to give empty names for mitochondrial genes.
         # Hey, I don't make the rules.
-        keep <- gene.info$Chromosome == "" & grepl("^MT-", gene.info$Symbol)
+        keep <- gene.info$chromosome == "" & grepl("^MT-", gene.info$name)
         if (any(keep)) {
-            gene.info[keep,"Chromosome"] <- "chrM"
+            gene.info[keep,"chromosome"] <- "chrM"
         }
 
         # Newer cellranger versions like to add coordinates, so 
         # let's throw it into the GRanges for fun.
-        gr <- GRanges(gene.info$Chromosome, IRanges(gene.info$Start, gene.info$End))
+        gr <- GRanges(gene.info$chromosome, IRanges(gene.info$start, gene.info$end))
         mcols(gr) <- DataFrame(gene.info[,1:3])
         gene.info <- gr 
     }
@@ -422,16 +422,16 @@ configureSampleForReadCounts <- function(
         }
 
         gene.info <- data.frame(
-            ID=as.character(h5read(path, paste0(group, "/genes"))),
-            Symbol=as.character(h5read(path, paste0(group, "/gene_names"))),
+            id=as.character(h5read(path, paste0(group, "/genes"))),
+            name=as.character(h5read(path, paste0(group, "/gene_names"))),
             stringsAsFactors=FALSE
         )
     } else {
         group <- "matrix"
         gene.info <- data.frame(
-            ID=as.character(h5read(path, paste0(group, "/features/id"))),
-            Symbol=as.character(h5read(path, paste0(group, "/features/name"))),
-            Type=as.character(h5read(path, paste0(group, "/features/feature_type"))),
+            id=as.character(h5read(path, paste0(group, "/features/id"))),
+            name=as.character(h5read(path, paste0(group, "/features/name"))),
+            type=as.character(h5read(path, paste0(group, "/features/feature_type"))),
             stringsAsFactors=FALSE
         )
     }

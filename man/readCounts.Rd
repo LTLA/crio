@@ -37,8 +37,8 @@ If unnamed, the sample identity is set to the path instead.}
 
 \item{column.names}{Boolean indicating whether the columns of the output object should be named with the cell barcodes.}
 
-\item{row.names}{String specifying whether to use Ensembl IDs ("ID") or gene symbols ("Symbol") as row names. 
-For symbols, the Ensembl ID will be appended to disambiguate rows where the same symbol corresponds to multiple Ensembl IDs.}
+\item{row.names}{String specifying whether to use Ensembl ids ("id") or gene symbols ("name") as row names. 
+For symbols, the Ensembl id will be appended to disambiguate rows where the same symbol corresponds to multiple Ensembl ids.}
 
 \item{delayed}{Boolean indicating whether sparse matrices should be wrapped in \link[DelayedArray]{DelayedArray}s before combining.
 This saves memory by avoiding the creation of a new matrix; it also avoids integer overflow for \link[Matrix]{dgCMatrix} instances.
@@ -95,9 +95,9 @@ Only relevant when \code{type="mtx"} or \code{type="prefix"}.}
 \value{
 For \code{readCounts}, a \link[SingleCellExperiment]{SingleCellExperiment} object containing count data for each genomic feature (row) and cell (column) across all \code{samples}.
 \itemize{
-\item The \code{\link[SummarizedExperiment]{rowData}} contains the \code{"ID"} and \code{"Symbol"} columns.
+\item The \code{\link[SummarizedExperiment]{rowData}} contains the \code{"id"} and \code{"name"} columns.
 The former is the gene identifier (usually Ensembl), while the latter is the gene name.
-If \code{version="3"}, it will also contain the \code{"Type"} field specifying the type of feature (e.g., gene, antibody tag, CRISPR guide).
+If \code{version="3"}, it will also contain the \code{"type"} field specifying the type of feature (e.g., gene, antibody tag, CRISPR guide).
 \item The \code{\link[SummarizedExperiment]{rowRanges}} contains the genomic coordinates for each gene.
 Only provided for \code{version="3"}, 
 \item The \code{\link[SummarizedExperiment]{colData}} will contain the \code{"Sample"} and \code{"Barcode"} columns.
