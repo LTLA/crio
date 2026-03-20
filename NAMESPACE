@@ -2,7 +2,6 @@
 
 export(configureSampleForReadCounts)
 export(encodeSequences)
-export(get10xMolInfoStats)
 export(readCounts)
 export(readMoleculeInformation)
 export(simulateMoleculeInformation)
