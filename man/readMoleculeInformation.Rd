@@ -11,8 +11,8 @@ readMoleculeInformation(
   get.barcode = TRUE,
   get.umi = TRUE,
   get.gem = TRUE,
-  get.gene = TRUE,
-  get.reads = TRUE,
+  get.feature = TRUE,
+  get.count = TRUE,
   get.library = TRUE,
   extract.library.info = TRUE,
   version = NULL
@@ -22,11 +22,12 @@ readMoleculeInformation(
 \item{path}{String containing the path to the molecule information HDF5 file.}
 
 \item{barcode.length}{Integer specifying the length of the cell barcode.
+If \code{NULL}, the barcode length is guessed from the 2-bit encoded integers. 
 Only relevant when \code{version="2"}.}
 
 \item{keep.unmapped}{Boolean indicating whether unmapped molecules should be reported.}
 
-\item{get.barcode, get.umi, get.gem, get.gene, get.reads, get.library}{Logical scalar indicating whether the corresponding field should be extracted for each molecule.}
+\item{get.barcode, get.umi, get.gem, get.feature, get.count, get.library}{Logical scalar indicating whether the corresponding field should be extracted for each molecule.}
 
 \item{extract.library.info}{Boolean whether the library information should be extracted.
 Only relevant when \code{version="3"}.}

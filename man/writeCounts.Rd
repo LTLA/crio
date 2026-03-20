@@ -7,10 +7,11 @@
 writeCounts(
   path,
   x,
-  barcodes = colnames(x),
-  gene.id = rownames(x),
-  gene.symbol = gene.id,
-  gene.type = "Gene Expression",
+  assay = 1L,
+  barcode.field = NULL,
+  feature.id.field = NULL,
+  feature.name.field = "Symbol",
+  feature.type.field = "Type",
   overwrite = FALSE,
   type = NULL,
   version = "3",
@@ -25,15 +26,20 @@ writeCounts(
 \arguments{
 \item{path}{A string containing the path to the output directory (for \code{type="sparse"}) or file (for \code{type="HDF5"}).}
 
-\item{x}{A sparse numeric matrix of UMI counts.}
+\item{x}{A \link[SummarizedExperiment]{SummarizedExperiment} containing a matrix of UMI counts.}
 
-\item{barcodes}{A character vector of cell barcodes, one per column of \code{x}.}
+\item{assay}{Integer or string specifying the assay of \code{x} containing the count matrix to be written.}
 
-\item{gene.id}{A character vector of gene identifiers, one per row of \code{x}.}
+\item{barcode.field}{String containing the name of the \code{\link[SummarizedExperiment]{colData}} column containing the cell barcodes.
+If \code{NULL}, the column names of \code{x} are assumed to contain the barcodes.}
 
-\item{gene.symbol}{A character vector of gene symbols, one per row of \code{x}.}
+\item{feature.id.field}{String containing the name of the \code{\link[SummarizedExperiment]{rowData}} column containing the feature IDs.
+If \code{NULL}, the row names of \code{x} are assumed to contain the feature IDs.}
 
-\item{gene.type}{A character vector of gene types, expanded to one per row of \code{x}.
+\item{feature.name.field}{String containing the name of the \code{\link[SummarizedExperiment]{rowData}} column containing the feature names.
+If \code{NULL}, the row names of \code{x} are assumed to contain the feature names.}
+
+\item{feature.type.field}{String containing the name of the \code{\link[SummarizedExperiment]{rowData}} column containing the feature types.
 Only used when \code{version="3"}.}
 
 \item{overwrite}{A logical scalar specifying whether \code{path} should be overwritten if it already exists.}
@@ -85,22 +91,22 @@ We recommend against doing so routinely due to CellRanger's dependence on undocu
 library(Matrix)
 my.counts <- matrix(rpois(1000, lambda=5), ncol=10, nrow=100)
 my.counts <- as(my.counts, "dgCMatrix")
-cell.ids <- paste0("BARCODE-", seq_len(ncol(my.counts)))
 
-ngenes <- nrow(my.counts)
-gene.ids <- paste0("ENSG0000", seq_len(ngenes))
-gene.symb <- paste0("GENE", seq_len(ngenes))
+library(SummarizedExperiment)
+se <- SummarizedExperiment(my.counts)
+colnames(se) <- paste0("BARCODE-", seq_len(ncol(my.counts)))
+rownames(se) <- paste0("ENSG0000", seq_len(nrow(my.counts)))
+rowData(se)$Symbol <- paste0("GENE", seq_len(nrow(my.counts)))
+rowData(se)$Type <- "Gene Expression"
 
 # Writing this to file:
 tmpdir <- tempfile()
-writeCounts(tmpdir, my.counts, gene.id=gene.ids, 
-    gene.symbol=gene.symb, barcodes=cell.ids)
+writeCounts(tmpdir, se)
 list.files(tmpdir)
 
 # Creating a version 3 HDF5 file:
 tmph5 <- tempfile(fileext=".h5")
-writeCounts(tmph5, my.counts, gene.id=gene.ids, 
-    gene.symbol=gene.symb, barcodes=cell.ids, version='3')
+writeCounts(tmph5, se, version='3')
 
 }
 \references{

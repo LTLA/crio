@@ -3,12 +3,17 @@
 #' Create a directory containing the count matrix and cell/gene annotation from a sparse matrix of UMI counts, 
 #' in the format produced by the CellRanger software suite.
 #' 
-#' @param x A sparse numeric matrix of UMI counts.
+#' @param x A \link[SummarizedExperiment]{SummarizedExperiment} containing a matrix of UMI counts.
 #' @param path A string containing the path to the output directory (for \code{type="sparse"}) or file (for \code{type="HDF5"}).
-#' @param barcodes A character vector of cell barcodes, one per column of \code{x}.
-#' @param gene.id A character vector of gene identifiers, one per row of \code{x}.
-#' @param gene.symbol A character vector of gene symbols, one per row of \code{x}.
-#' @param gene.type A character vector of gene types, expanded to one per row of \code{x}.
+#' @param assay Integer or string specifying the assay of \code{x} containing the count matrix to be written.
+#' @param barcode.field String containing the name of the \code{\link[SummarizedExperiment]{colData}} column containing the cell barcodes.
+#' If \code{NULL}, the column names of \code{x} are assumed to contain the barcodes.
+#' @param feature.id.field String containing the name of the \code{\link[SummarizedExperiment]{rowData}} column containing the feature IDs.
+#' If \code{NULL}, the row names of \code{x} are assumed to contain the feature IDs.
+#' @param feature.name.field String containing the name of the \code{\link[SummarizedExperiment]{rowData}} column containing the feature names.
+#' If \code{NULL}, the row names of \code{x} are assumed to contain the feature names.
+#' @param feature.type.field String containing the name of the \code{\link[SummarizedExperiment]{rowData}} column containing the feature types.
+#' If this name is not present in the \code{rowData}, the type defaults to \code{"Gene Expression"} for all rows of \code{x}.
 #' Only used when \code{version="3"}.
 #' @param overwrite A logical scalar specifying whether \code{path} should be overwritten if it already exists.
 #' @param type String specifying the type of 10X format to save \code{x} to.
@@ -57,22 +62,22 @@
 #' library(Matrix)
 #' my.counts <- matrix(rpois(1000, lambda=5), ncol=10, nrow=100)
 #' my.counts <- as(my.counts, "dgCMatrix")
-#' cell.ids <- paste0("BARCODE-", seq_len(ncol(my.counts)))
 #' 
-#' ngenes <- nrow(my.counts)
-#' gene.ids <- paste0("ENSG0000", seq_len(ngenes))
-#' gene.symb <- paste0("GENE", seq_len(ngenes))
+#' library(SummarizedExperiment)
+#' se <- SummarizedExperiment(my.counts)
+#' colnames(se) <- paste0("BARCODE-", seq_len(ncol(my.counts)))
+#' rownames(se) <- paste0("ENSG0000", seq_len(nrow(my.counts)))
+#' rowData(se)$Symbol <- paste0("GENE", seq_len(nrow(my.counts)))
+#' rowData(se)$Type <- "Gene Expression"
 #' 
 #' # Writing this to file:
 #' tmpdir <- tempfile()
-#' writeCounts(tmpdir, my.counts, gene.id=gene.ids, 
-#'     gene.symbol=gene.symb, barcodes=cell.ids)
+#' writeCounts(tmpdir, se)
 #' list.files(tmpdir)
 #'
 #' # Creating a version 3 HDF5 file:
 #' tmph5 <- tempfile(fileext=".h5")
-#' writeCounts(tmph5, my.counts, gene.id=gene.ids, 
-#'     gene.symbol=gene.symb, barcodes=cell.ids, version='3')
+#' writeCounts(tmph5, se, version='3')
 #' 
 #' @references
 #' 10X Genomics (2017).
@@ -92,13 +97,15 @@
 #' \url{https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/advanced/h5_matrices}
 #' 
 #' @export
+#' @importFrom SummarizedExperiment rowData colData
 writeCounts <- function(
     path,
     x,
-    barcodes = colnames(x),
-    gene.id = rownames(x),
-    gene.symbol = gene.id,
-    gene.type = "Gene Expression",
+    assay = 1L,
+    barcode.field = NULL, 
+    feature.id.field = NULL,
+    feature.name.field = "Symbol",
+    feature.type.field = "Type",
     overwrite = FALSE,
     type = NULL,
     version = "3",
@@ -120,13 +127,47 @@ writeCounts <- function(
         } 
     })
 
-    # Checking the values.
-    if (length(gene.id) != length(gene.symbol) || length(gene.id) != nrow(x)) {
-        stop("lengths of 'gene.id' and 'gene.symbol' must be equal to 'nrow(x)'")
+    # Extracting all components.
+    barcodes <- NULL
+    if (is.null(barcode.field)) {
+        barcodes <- colnames(x)
+    } else {
+        barcodes <- colData(x)[[barcode.field]]
     }
-    if (ncol(x) != length(barcodes)) { 
-        stop("'barcodes' must of of the same length as 'ncol(x)'")
+    if (is.null(barcodes)) {
+        stop("no barcodes available at 'barcode.field'")
     }
+
+    feature.ids <- NULL
+    if (is.null(feature.id.field)) {
+        feature.ids <- rownames(x)
+    } else {
+        feature.ids <- rowData(x)[[feature.id.field]]
+    }
+    if (is.null(feature.ids)) {
+        stop("no feature IDs available at 'feature.id.field'")
+    }
+
+    feature.names <- NULL
+    if (is.null(feature.name.field)) {
+        feature.names <- rownames(x)
+    } else {
+        feature.names <- rowData(x)[[feature.name.field]]
+    }
+    if (is.null(feature.names)) {
+        stop("no feature names available at 'feature.name.field'")
+    }
+
+    feature.types <- NULL
+    if (version != "2") {
+        if (feature.type.field %in% colnames(rowData(x))) {
+            feature.types <- rowData(x)[[feature.type.field]]
+        } else {
+            feature.types <- rep("Gene Expression", nrow(x))
+        }
+    }
+
+    x <- SummarizedExperiment::assay(x, assay)
 
     # Determining what format to save in.
     if (is.null(type)) {
@@ -147,9 +188,9 @@ writeCounts <- function(
             x = x,
             path = temp.path,
             barcodes = barcodes,
-            gene.id = gene.id,
-            gene.symbol = gene.symbol,
-            gene.type = gene.type,
+            feature.ids = feature.ids,
+            feature.names = feature.names,
+            feature.types = feature.types,
             version = version,
             compressed = compressed,
             prefix = prefix,
@@ -161,9 +202,9 @@ writeCounts <- function(
             path = temp.path,
             genome = genome,
             barcodes = barcodes,
-            gene.id = gene.id,
-            gene.symbol = gene.symbol,
-            gene.type = gene.type,
+            feature.ids = feature.ids,
+            feature.names = feature.names,
+            feature.types = feature.types,
             version = version,
             chemistry = chemistry,
             original.gem.groups = original.gem.groups,
@@ -204,20 +245,20 @@ writeCounts <- function(
     path,
     x,
     barcodes,
-    gene.id,
-    gene.symbol,
-    gene.type,
+    feature.ids,
+    feature.names,
+    feature.types,
     version,
     compressed,
     prefix,
     num.threads
 ) {
-    gene.info <- data.frame(ID = gene.id, Symbol = gene.symbol, stringsAsFactors=FALSE)
+    gene.info <- data.frame(ID = feature.ids, Symbol = feature.names, stringsAsFactors=FALSE)
 
     bname <- "barcodes.tsv"
     mname <- "matrix.mtx"
     if (version == "3") {
-        gene.info$Type <- rep(gene.type, length.out=nrow(gene.info))
+        gene.info$Type <- feature.types
         fname <- "features.tsv"
     } else {
         fname <- "genes.tsv"
@@ -268,9 +309,9 @@ writeCounts <- function(
     genome,
     x,
     barcodes,
-    gene.id,
-    gene.symbol,
-    gene.type,
+    feature.ids,
+    feature.names,
+    feature.types,
     version,
     chemistry,
     original.gem.groups,
@@ -293,13 +334,13 @@ writeCounts <- function(
     if (version=="3") {
         h5createGroup(path, file.path(group, "features"))
 
-        h5write(gene.id, file=path, name=paste0(group, "/features/id"))
-        h5write(gene.symbol, file=path, name=paste0(group, "/features/name"))
-        h5write(rep(gene.type, length.out=length(gene.id)),
+        h5write(feature.ids, file=path, name=paste0(group, "/features/id"))
+        h5write(feature.names, file=path, name=paste0(group, "/features/name"))
+        h5write(rep(feature.types, length.out=length(feature.ids)),
             file=path, name=paste0(group, "/features/feature_type"))
 
         h5write("genome", file=path, name=paste0(group, "/features/_all_tag_keys"))
-        h5write(rep(genome, length.out=length(gene.id)),
+        h5write(rep(genome, length.out=length(feature.ids)),
             file=path, name=paste0(group, "/features/genome"))
 
         # Writing attributes.
@@ -318,8 +359,8 @@ writeCounts <- function(
         })()
 
     } else {
-        h5write(gene.id, file=path, name=paste0(group, "/genes"))
-        h5write(gene.symbol, file=path, name=paste0(group, "/gene_names"))
+        h5write(feature.ids, file=path, name=paste0(group, "/genes"))
+        h5write(feature.names, file=path, name=paste0(group, "/gene_names"))
     }
 
     write_hdf5_counts(

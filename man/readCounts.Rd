@@ -2,6 +2,7 @@
 % Please edit documentation in R/readCounts.R
 \name{readCounts}
 \alias{readCounts}
+\alias{configureSampleForReadCounts}
 \title{Load data from a 10X Genomics experiment}
 \usage{
 readCounts(
@@ -11,6 +12,17 @@ readCounts(
   delayed = FALSE,
   intersect.rows = FALSE,
   BPPARAM = SerialParam()
+)
+
+configureSampleForReadCounts(
+  path,
+  type = NULL,
+  version = NULL,
+  genome = NULL,
+  compressed = NULL,
+  mtx.two.pass = FALSE,
+  mtx.class = c("CsparseMatrix", "SVT_SparseMatrix"),
+  mtx.threads = 1
 )
 }
 \arguments{

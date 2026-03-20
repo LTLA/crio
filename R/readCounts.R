@@ -283,7 +283,7 @@ configureSampleForReadCounts <- function(
 }
 
 .tenx_loader <- function(sample) {
-    cur.type <- .type_chooser(sample$path, sample$type)
+    cur.type <- sample$type
     if (cur.type=="mtx" || cur.type == "prefix") {
         .read_from_sparse(
             sample$path,
