@@ -31,6 +31,10 @@ test_that("writeCounts works correctly for sparse counts, version == 2", {
     expect_error(writeCounts(path=tmpdir, se, version="2"), "specified 'path' already exists", fixed=TRUE)
     expect_identical(all.sizes, file.info(list.files(tmpdir, full=TRUE))$size) # All these failures don't change the files yet.
 
+    expect_error(writeCounts(path=tmpdir, se, version="2", barcode.field="BOO"), "no barcodes")
+    expect_error(writeCounts(path=tmpdir, se, version="2", feature.id.field="BOO"), "no feature IDs")
+    expect_error(writeCounts(path=tmpdir, se, version="2", feature.name.field="BOO"), "no feature names")
+
     writeCounts(path=tmpdir, se, version="2", overwrite=TRUE)
     expect_identical(all.sizes, file.info(list.files(tmpdir, full=TRUE))$size)
 
@@ -150,6 +154,7 @@ test_that("readCounts works for sparse counts with odd gene names", {
     tmpdir <- tempfile()
     gene.symb2 <- paste0(gene.symb, sample(c("#", "'", '"', ""), length(gene.symb), replace=TRUE)) # full of weird elements.
     rowData(se)$name <- gene.symb2
+    colnames(se) <- paste0(colnames(se), sample(c("#", "'", '"', ""), ncol(se), replace=TRUE)) # more weird elements.
     writeCounts(path=tmpdir, se, version="3")
     sce10x <- readCounts(tmpdir)
 
@@ -161,7 +166,7 @@ test_that("readCounts works for sparse counts with odd gene names", {
 
 test_that("writeCounts works correctly for sparse counts, version == 3", {
     tmpdir <- tempfile()
-    writeCounts(path=tmpdir, se, version="3")
+    expect_message(writeCounts(path=tmpdir, se, version="3"), "setting all feature types")
     expect_identical(sort(list.files(tmpdir)), c("barcodes.tsv.gz", "features.tsv.gz", "matrix.mtx.gz"))
     out <- read.table(file.path(tmpdir, "features.tsv.gz"), stringsAsFactors=FALSE, sep="\t")
     expect_identical(out[,3], rep("Gene Expression", ngenes)) # default types used.

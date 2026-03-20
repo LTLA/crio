@@ -166,6 +166,7 @@ writeCounts <- function(
         if (feature.type.field %in% colnames(rowData(x))) {
             feature.types <- rowData(x)[[feature.type.field]]
         } else {
+            message("setting all feature types to \"Gene Expression\"")
             feature.types <- rep("Gene Expression", nrow(x))
         }
     }
