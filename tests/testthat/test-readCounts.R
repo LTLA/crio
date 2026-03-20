@@ -4,7 +4,8 @@ set.seed(2000)
 library(Matrix)
 
 # Mocking up some 10X genomics output.
-my.counts <- ceiling(abs(rsparsematrix(100, 10, density=0.2) * 10))
+my.counts <- abs(rsparsematrix(100, 10, density=0.2) * 10)
+my.counts@x <- my.counts@x + 1 # avoid comparison difficulties when rounding to zero.
 my.counts <- as(my.counts, "CsparseMatrix")
 
 se <- SummarizedExperiment(my.counts)
@@ -56,7 +57,7 @@ test_that("readCounts works correctly for sparse counts, version == 2", {
 
     # Reading it in.
     sce10x <- readCounts(tmpdir)
-    alt.counts <- my.counts
+    alt.counts <- floor(my.counts)
     rownames(alt.counts) <- rownames(se)
     colnames(alt.counts) <- NULL
 
@@ -72,7 +73,8 @@ test_that("readCounts works correctly for sparse counts, version == 2", {
 
     sce10x.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix"))
     svt.counts <- as(alt.counts, "SVT_SparseArray")
-    expect_equal(counts(sce10x.svt), svt.counts)
+    type(svt.counts) <- "integer"
+    expect_identical(counts(sce10x.svt), svt.counts)
     sce10x.tp.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE, mtx.class="SVT_SparseMatrix"))
     expect_equal(counts(sce10x.tp.svt), svt.counts)
 
@@ -87,7 +89,10 @@ test_that("readCounts works correctly for sparse counts, version == 2", {
     writeCounts(path=tmpdir2, se, assay="foo", version="2")
 
     sce10x2 <- readCounts(tmpdir2)
-    expect_equal(assay(sce10x)*2L, assay(sce10x2))
+    alt.counts <- floor(my.counts * 2)
+    rownames(alt.counts) <- rownames(se)
+    colnames(alt.counts) <- NULL
+    expect_equal(assay(sce10x2), alt.counts)
 
     ref <- cbind(sce10x, sce10x2)
     colnames(ref) <- NULL
@@ -141,14 +146,14 @@ test_that("readCounts populates column names", {
     expect_identical(metadata(sce10x5)$samples, c(B=tmpdir, C=tmpdir)) 
 })
 
-test_that("readCounts works for sparse counts with odd inputs", {
+test_that("readCounts works for sparse counts with odd gene names", {
     tmpdir <- tempfile()
     gene.symb2 <- paste0(gene.symb, sample(c("#", "'", '"', ""), length(gene.symb), replace=TRUE)) # full of weird elements.
     rowData(se)$name <- gene.symb2
     writeCounts(path=tmpdir, se, version="3")
     sce10x <- readCounts(tmpdir)
 
-    expect_equal(assay(sce10x, withDimnames=FALSE), my.counts)
+    expect_equal(assay(sce10x, withDimnames=FALSE), floor(my.counts))
     expect_identical(colData(sce10x)$barcode, colnames(se))
     expect_identical(rowData(sce10x)$id, rownames(se))
     expect_identical(rowData(sce10x)$name, gene.symb2)
@@ -175,7 +180,7 @@ test_that("readCounts works correctly for sparse counts, version == 3", {
     writeCounts(path=tmpdir, se, version="3")
 
     sce10x <- readCounts(tmpdir)
-    alt.counts <- my.counts
+    alt.counts <- floor(my.counts)
     rownames(alt.counts) <- rownames(se)
     colnames(alt.counts) <- NULL
 
@@ -232,7 +237,7 @@ test_that("readCounts works correctly for HDF5 counts, version == 2", {
 
     # Reading it in.
     sce10x <- readCounts(tmph5)
-    alt.counts <- as.matrix(my.counts)
+    alt.counts <- as.matrix(floor(my.counts))
     dimnames(alt.counts) <- NULL
 
     expect_s4_class(counts(sce10x, withDimnames=FALSE), "DelayedMatrix")
@@ -281,7 +286,7 @@ test_that("readCounts works correctly for HDF5 counts, version == 3", {
     writeCounts(path=tmph5, se, version="3")
 
     sce10x <- readCounts(tmph5)
-    alt.counts <- as.matrix(my.counts)
+    alt.counts <- as.matrix(floor(my.counts))
     dimnames(alt.counts) <- NULL
 
     expect_s4_class(counts(sce10x, withDimnames=FALSE), "DelayedMatrix")
@@ -327,7 +332,7 @@ test_that("readCounts works correctly with mismatching features", {
     # Intersection works as expected.
     sce10x <- readCounts(c(tmpdir1, tmpdir2), intersect.rows=TRUE)
     expect_identical(rownames(sce10x), rownames(se)[keep])
-    expect_equal(assay(sce10x, withDimnames=FALSE), cbind(my.counts[keep,], my.counts[keep,]))
+    expect_equal(assay(sce10x, withDimnames=FALSE), floor(cbind(my.counts[keep,], my.counts[keep,])))
 })
 
 test_that("readCounts, use gene symbols as row names", {
@@ -348,7 +353,7 @@ test_that("readCounts, use gene symbols as row names", {
 })
 
 test_that("readCounts with an integer Matrix Market file", {
-    assay(se) <- DelayedArray::DelayedArray(ceiling(assay(se))) # make them integer but avoid problems with zeros. 
+    assay(se) <- DelayedArray::DelayedArray(assay(se))
     type(assay(se)) <- "integer"
     tmpdir <- tempfile()
     writeCounts(path=tmpdir, se, version="2")
@@ -358,6 +363,40 @@ test_that("readCounts with an integer Matrix Market file", {
     expect_match(first.line, "integer")
 
     alt.counts <- as(assay(se), "dgCMatrix")
+    rownames(alt.counts) <- rownames(se)
+    colnames(alt.counts) <- NULL
+
+    # Trying all the options for reading matrices. 
+    sce10x <- readCounts(tmpdir)
+    expect_identical(counts(sce10x), alt.counts)
+    sce10x.tp <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE))
+    expect_identical(counts(sce10x.tp), alt.counts)
+
+    sce10x.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix"))
+    svt.counts <- as(alt.counts, "SVT_SparseArray")
+    type(svt.counts) <- "integer"
+    expect_identical(counts(sce10x.svt), svt.counts)
+    sce10x.tp.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE, mtx.class="SVT_SparseMatrix"))
+    expect_identical(counts(sce10x.tp.svt), svt.counts)
+
+    # Multiple threads as well:
+    sce10x.mc <- readCounts(configureSampleForReadCounts(tmpdir, mtx.threads=2))
+    expect_identical(counts(sce10x.mc), alt.counts)
+    sce10x.mc <- readCounts(configureSampleForReadCounts(tmpdir, mtx.threads=2, mtx.two.pass=TRUE))
+    expect_identical(counts(sce10x.mc), alt.counts)
+})
+
+set.seed(2009)
+test_that("readCounts with a shuffled Matrix Market file", {
+    tmpdir <- tempfile()
+    writeCounts(path=tmpdir, se, version="2")
+
+    # Shuffling the lines of the Matrix Market file to check that read_mm() handles it correctly.
+    mtx.path <- file.path(tmpdir, "matrix.mtx")
+    all.lines <- readLines(mtx.path)
+    writeLines(c(head(all.lines, 2), sample(tail(all.lines, -2))), con=mtx.path)
+
+    alt.counts <- floor(my.counts)
     rownames(alt.counts) <- rownames(se)
     colnames(alt.counts) <- NULL
 
@@ -382,34 +421,19 @@ test_that("readCounts with an integer Matrix Market file", {
 })
 
 set.seed(2009)
-test_that("readCounts with a shuffled Matrix Market file", {
+test_that("readCounts for floating-point data", {
     tmpdir <- tempfile()
-    writeCounts(path=tmpdir, se, version="2")
-
-    # Shuffling the lines of the Matrix Market file to check that read_mm() handles it correctly.
-    mtx.path <- file.path(tmpdir, "matrix.mtx")
-    all.lines <- readLines(mtx.path)
-    writeLines(c(head(all.lines, 2), sample(tail(all.lines, -2))), con=mtx.path)
-
-    alt.counts <- my.counts
-    rownames(alt.counts) <- rownames(se)
-    colnames(alt.counts) <- NULL
-
-    # Trying all the options for reading matrices. 
+    writeCounts(path=tmpdir, se, version="3", force.integer=FALSE)
     sce10x <- readCounts(tmpdir)
-    expect_equal(counts(sce10x), alt.counts)
-    sce10x.tp <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE))
-    expect_equal(counts(sce10x.tp), alt.counts)
+    expect_identical(counts(sce10x, withDimnames=FALSE), my.counts)
+    sce10x <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix"))
+    expect_identical(counts(sce10x, withDimnames=FALSE), as(my.counts, "SVT_SparseArray"))
 
-    sce10x.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix"))
-    svt.counts <- as(alt.counts, "SVT_SparseArray")
-    expect_equal(counts(sce10x.svt), svt.counts)
-    sce10x.tp.svt <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE, mtx.class="SVT_SparseMatrix"))
-    expect_equal(counts(sce10x.tp.svt), svt.counts)
-
-    # Multiple threads as well:
-    sce10x.mc <- readCounts(configureSampleForReadCounts(tmpdir, mtx.threads=2))
-    expect_equal(counts(sce10x.mc), alt.counts)
-    sce10x.mc <- readCounts(configureSampleForReadCounts(tmpdir, mtx.threads=2, mtx.two.pass=TRUE))
-    expect_equal(counts(sce10x.mc), alt.counts)
+    tmph5 <- tempfile(fileext=".h5")
+    writeCounts(path=tmph5, se, version="3", force.integer=FALSE)
+    sce10x <- readCounts(tmpdir)
+    denseref <- as.matrix(my.counts)
+    expect_identical(as.matrix(counts(sce10x, withDimnames=FALSE)), denseref)
+    sce10x <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix"))
+    expect_identical(as.matrix(counts(sce10x, withDimnames=FALSE)), denseref)
 })

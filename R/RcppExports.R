@@ -17,8 +17,8 @@ read_mm <- function(path, two_pass, class_name, threads) {
     .Call('_crio_read_mm', PACKAGE = 'crio', path, two_pass, class_name, threads)
 }
 
-write_hdf5_counts <- function(ptr, path, group, num_threads) {
-    .Call('_crio_write_hdf5_counts', PACKAGE = 'crio', ptr, path, group, num_threads)
+write_hdf5_counts <- function(ptr, path, group, is_integer, num_threads) {
+    .Call('_crio_write_hdf5_counts', PACKAGE = 'crio', ptr, path, group, is_integer, num_threads)
 }
 
 write_mm <- function(ptr, path, compressed, is_integer, num_threads) {

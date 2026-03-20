@@ -4,7 +4,7 @@
 #' in the format produced by the CellRanger software suite.
 #' 
 #' @param x A \link[SummarizedExperiment]{SummarizedExperiment} containing a matrix of UMI counts.
-#' @param path A string containing the path to the output directory (for \code{type="sparse"}) or file (for \code{type="HDF5"}).
+#' @param path A string containing the path to the output directory (for \code{type="mtx"}) or file (for \code{type="HDF5"}).
 #' @param assay Integer or string specifying the assay of \code{x} containing the count matrix to be written.
 #' @param barcode.field String containing the name of the \code{\link[SummarizedExperiment]{colData}} column containing the cell barcodes.
 #' If \code{NULL}, the column names of \code{x} are assumed to contain the barcodes.
@@ -15,9 +15,11 @@
 #' @param feature.type.field String containing the name of the \code{\link[SummarizedExperiment]{rowData}} column containing the feature types.
 #' If this name is not present in the \code{rowData}, the type defaults to \code{"Gene Expression"} for all rows of \code{x}.
 #' Only used when \code{version="3"}.
-#' @param overwrite A logical scalar specifying whether \code{path} should be overwritten if it already exists.
+#' @param overwrite Boolean specifying whether \code{path} should be overwritten if it already exists.
+#' @param force.integers Boolean specifying whether entries of the count matrix should be truncated to their integer component.
+#' This can be set to \code{FALSE} to preserve non-integer values in the on-disk representation.
 #' @param type String specifying the type of 10X format to save \code{x} to.
-#' This is either a directory containing a sparse matrix with row/column annotation (\code{"sparse"})
+#' This is either a directory containing a sparse matrix with row/column annotation (\code{"mtx"})
 #' or a HDF5 file containing the same information (\code{"HDF5"}).
 #' @param genome String specifying the genome for storage when \code{type="HDF5"}.
 #' This can be a character vector with one genome per feature if \code{version="3"}.
@@ -30,7 +32,7 @@
 #' @details
 #' This function will try to automatically detect the desired format based on whether \code{path} ends with \code{".h5"}.
 #' If so, it assumes that \code{path} specifies a HDF5 file path and sets \code{type="HDF5"}.
-#' Otherwise it will set \code{type="sparse"} under the assumption that \code{path} specifies a path to a directory.
+#' Otherwise it will set \code{type="mtx"} under the assumption that \code{path} specifies a path to a directory.
 #' 
 #' Note that there were major changes in the output format for CellRanger version 3.0 to account for non-gene features such as antibody or CRISPR tags. 
 #' Users can switch to this new format using \code{version="3"}.
@@ -41,7 +43,7 @@
 #' We recommend against doing so routinely due to CellRanger's dependence on undocumented metadata attributes that may change without notice.
 #' 
 #' @return 
-#' For \code{type="sparse"}, a directory is produced at \code{path}.
+#' For \code{type="mtx"}, a directory is produced at \code{path}.
 #' If \code{version="2"}, this will contain the files \code{"matrix.mtx"}, \code{"barcodes.tsv"} and \code{"genes.tsv"}.
 #' If \code{version="3"}, it will instead contain \code{"matrix.mtx.gz"}, \code{"barcodes.tsv.gz"} and \code{"features.tsv.gz"}.
 #' 
@@ -102,6 +104,7 @@ writeCounts <- function(
     path,
     x,
     assay = 1L,
+    force.integer = TRUE,
     barcode.field = NULL, 
     feature.id.field = NULL,
     feature.name.field = "name",
@@ -194,6 +197,7 @@ writeCounts <- function(
             version = version,
             compressed = compressed,
             prefix = prefix,
+            force.integer = force.integer,
             num.threads = num.threads
         )
     } else {
@@ -209,6 +213,7 @@ writeCounts <- function(
             chemistry = chemistry,
             original.gem.groups = original.gem.groups,
             library.ids = library.ids,
+            force.integer = force.integer,
             num.threads = num.threads
         )
     }
@@ -239,7 +244,7 @@ writeCounts <- function(
 
 #' @importFrom utils write.table
 #' @importFrom R.utils gzip
-#' @importFrom DelayedArray type
+#' @importFrom DelayedArray type type<- DelayedArray
 #' @importFrom beachmat initializeCpp
 .write_sparse <- function(
     path,
@@ -251,6 +256,7 @@ writeCounts <- function(
     version,
     compressed,
     prefix,
+    force.integer, 
     num.threads
 ) {
     gene.info <- data.frame(id = feature.ids, name = feature.names, stringsAsFactors=FALSE)
@@ -291,11 +297,17 @@ writeCounts <- function(
     write(barcodes, file=bhandle)
     write.table(gene.info, file=fhandle, row.names=FALSE, col.names=FALSE, quote=FALSE, sep="\t")
 
+    # Truncating values before calling the MM writer.
+    if (force.integer && type(x) == "double") {
+        x <- DelayedArray(x)
+        type(x) <- "integer"
+    }
+
     write_mm(
         initializeCpp(x),
         mpath,
         compressed = compressed,
-        is_integer = (type(x) == "integer"),
+        is_integer = (force.integer || type(x) == "integer"),
         num_threads = num.threads
     )
 }
@@ -304,6 +316,7 @@ writeCounts <- function(
 #' @importFrom rhdf5 h5createFile h5createGroup h5write h5writeAttribute H5Gopen H5Fopen H5Gclose H5Fclose
 #' @importFrom methods as
 #' @importClassesFrom Matrix dgCMatrix
+#' @importFrom DelayedArray type
 .write_hdf5 <- function(
     path,
     genome,
@@ -316,6 +329,7 @@ writeCounts <- function(
     chemistry,
     original.gem.groups,
     library.ids,
+    force.integer,
     num.threads
 ) {
     path <- path.expand(path) # protect against tilde's.
@@ -367,6 +381,7 @@ writeCounts <- function(
         initializeCpp(x),
         path = path,
         group = group,
+        is_integer = (force.integer || type(x) == "integer"),
         num_threads = num.threads
     )
 }

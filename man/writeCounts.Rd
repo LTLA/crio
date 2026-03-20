@@ -8,6 +8,7 @@ writeCounts(
   path,
   x,
   assay = 1L,
+  force.integer = TRUE,
   barcode.field = NULL,
   feature.id.field = NULL,
   feature.name.field = "name",
@@ -24,7 +25,7 @@ writeCounts(
 )
 }
 \arguments{
-\item{path}{A string containing the path to the output directory (for \code{type="sparse"}) or file (for \code{type="HDF5"}).}
+\item{path}{A string containing the path to the output directory (for \code{type="mtx"}) or file (for \code{type="HDF5"}).}
 
 \item{x}{A \link[SummarizedExperiment]{SummarizedExperiment} containing a matrix of UMI counts.}
 
@@ -43,10 +44,10 @@ If \code{NULL}, the row names of \code{x} are assumed to contain the feature nam
 If this name is not present in the \code{rowData}, the type defaults to \code{"Gene Expression"} for all rows of \code{x}.
 Only used when \code{version="3"}.}
 
-\item{overwrite}{A logical scalar specifying whether \code{path} should be overwritten if it already exists.}
+\item{overwrite}{Boolean specifying whether \code{path} should be overwritten if it already exists.}
 
 \item{type}{String specifying the type of 10X format to save \code{x} to.
-This is either a directory containing a sparse matrix with row/column annotation (\code{"sparse"})
+This is either a directory containing a sparse matrix with row/column annotation (\code{"mtx"})
 or a HDF5 file containing the same information (\code{"HDF5"}).}
 
 \item{version}{String specifying the version of the CellRanger format to produce.}
@@ -58,9 +59,12 @@ This can be a character vector with one genome per feature if \code{version="3"}
 Their interpretation is not formally documented and is left to the user's imagination.}
 
 \item{num.threads}{Integer specifying the number of threads to use for counting the number of non-zero elements.}
+
+\item{force.integers}{Boolean specifying whether entries of the count matrix should be truncated to their integer component.
+This can be set to \code{FALSE} to preserve non-integer values in the on-disk representation.}
 }
 \value{
-For \code{type="sparse"}, a directory is produced at \code{path}.
+For \code{type="mtx"}, a directory is produced at \code{path}.
 If \code{version="2"}, this will contain the files \code{"matrix.mtx"}, \code{"barcodes.tsv"} and \code{"genes.tsv"}.
 If \code{version="3"}, it will instead contain \code{"matrix.mtx.gz"}, \code{"barcodes.tsv.gz"} and \code{"features.tsv.gz"}.
 
@@ -77,7 +81,7 @@ in the format produced by the CellRanger software suite.
 \details{
 This function will try to automatically detect the desired format based on whether \code{path} ends with \code{".h5"}.
 If so, it assumes that \code{path} specifies a HDF5 file path and sets \code{type="HDF5"}.
-Otherwise it will set \code{type="sparse"} under the assumption that \code{path} specifies a path to a directory.
+Otherwise it will set \code{type="mtx"} under the assumption that \code{path} specifies a path to a directory.
 
 Note that there were major changes in the output format for CellRanger version 3.0 to account for non-gene features such as antibody or CRISPR tags. 
 Users can switch to this new format using \code{version="3"}.

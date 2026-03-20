@@ -34,6 +34,9 @@ SEXP write_mm(Rcpp::RObject ptr, std::string path, bool compressed, bool is_inte
     opt.coordinate = true;
     opt.banner = false;
     opt.num_threads = num_threads;
+    if (is_integer) {
+        opt.format = std::chars_format::fixed;
+    }
 
     tatami_mtx::write_matrix(*(mptr->ptr), *writer, opt);
     writer->finish();

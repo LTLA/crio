@@ -12,7 +12,7 @@
 #include "utils.h"
 
 //[[Rcpp::export(rng=false)]]
-SEXP write_hdf5_counts(Rcpp::RObject ptr, std::string path, std::string group, int num_threads) {
+SEXP write_hdf5_counts(Rcpp::RObject ptr, std::string path, std::string group, bool is_integer, int num_threads) {
     Rtatami::BoundNumericPointer mptr(ptr);
 
     H5::H5File fhandle(path, H5F_ACC_RDWR);
@@ -20,8 +20,15 @@ SEXP write_hdf5_counts(Rcpp::RObject ptr, std::string path, std::string group, i
 
     tatami_hdf5::WriteCompressedSparseMatrixOptions opt;
     opt.columnar = tatami_hdf5::WriteStorageLayout::COLUMN;
-    opt.data_type = tatami_hdf5::WriteStorageType::UINT32;
     opt.index_type = tatami_hdf5::WriteStorageType::UINT32;
+
+    if (is_integer) {
+        opt.data_type = tatami_hdf5::WriteStorageType::UINT32;
+        opt.force_integer = true;
+    } else {
+        opt.data_type = tatami_hdf5::WriteStorageType::DOUBLE;
+    }
+
     // opt.indptr_type = tatami_hdf5::WriteStorageType::UINT32;
     opt.num_threads = num_threads;
 

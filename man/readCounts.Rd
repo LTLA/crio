@@ -100,7 +100,7 @@ The former is the gene identifier (usually Ensembl), while the latter is the gen
 If \code{version="3"}, it will also contain the \code{"type"} field specifying the type of feature (e.g., gene, antibody tag, CRISPR guide).
 \item The \code{\link[SummarizedExperiment]{rowRanges}} contains the genomic coordinates for each gene.
 Only provided for \code{version="3"}, 
-\item The \code{\link[SummarizedExperiment]{colData}} will contain the \code{"Sample"} and \code{"Barcode"} columns.
+\item The \code{\link[SummarizedExperiment]{colData}} will contain the \code{"sample"} and \code{"barcode"} columns.
 The former contains the name of the sample (or if not supplied, the path in \code{samples}) from which each column was obtained.
 The latter contains the cell barcode sequence and GEM group for each cell library. 
 \item Rows are named with the gene identifier.
@@ -116,7 +116,7 @@ Otherwise, for \code{type="hdf5"}, the matrix is a \link[HDF5Array]{HDF5Matrix}.
 \item If multiple samples are present, the class of the matrix is determined by the return type of \code{cbind} on the per-sample matrices.
 This can be forced to be a \link[DelayedArray]{DelayedMatrix} by setting \code{delayed=TRUE}. 
 }
-\item The \code{\link[S4Vectors]{metadata}} contains a \code{"Samples"} field, containing the input \code{samples} character vector.
+\item The \code{\link[S4Vectors]{metadata}} contains a \code{"samples"} field, containing the input \code{samples} character vector.
 }
 
 For \code{configureSampleForReadCounts}, a list of configuration parameters for each sample.
