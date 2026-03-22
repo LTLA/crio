@@ -67,16 +67,16 @@
 #' based on code by Jonathan Griffiths
 #' 
 #' @seealso
-#' \code{\link{makeCountMatrix}}, which creates a count matrix from this information. 
+#' \code{\link{countMolecules}}, which creates a count matrix from this information. 
 #' 
 #' @examples
 #' # Mocking up some 10X HDF5-formatted data.
 #' sim <- simulateMoleculeInformation()
 #' temp <- tempfile(fileext=".h5")
-#' writeMoleculeInformation(temp, sim)
+#' writeMolecules(temp, sim)
 #' 
 #' # Reading the resulting file.
-#' readMoleculeInformation(temp)
+#' readMolecules(temp)
 #' 
 #' @references
 #' Zheng GX, Terry JM, Belgrader P, and others (2017).
@@ -95,7 +95,7 @@
 #' @importFrom rhdf5 h5read H5Fopen H5Fclose H5Dopen H5Dclose H5Dget_space H5Sget_simple_extent_dims H5Sclose
 #' @importFrom S4Vectors DataFrame make_zero_col_DFrame
 #' @importFrom jsonlite fromJSON
-readMoleculeInformation <- function(
+readMolecules <- function(
     path,
     barcode.length = NULL,
     keep.unmapped = FALSE, 

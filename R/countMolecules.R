@@ -27,7 +27,7 @@
 #' countMolecules(20, sim$molecules$feature, sim$molecules$barcode)
 #'
 #' @seealso
-#' \code{\link{readMoleculeInformation}}, which is typically used to load molecule information from the HDF5 file produced by CellRanger.
+#' \code{\link{readMolecules}}, which is typically used to load molecule information from the HDF5 file produced by CellRanger.
 #'
 #' @export
 countMolecules <- function(

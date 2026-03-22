@@ -3,7 +3,7 @@
 #' Write a data frame of molecule information into a HDF5 file.
 #'
 #' @param path String containing the path to the file.
-#' @param data List returned by \code{\link{readMoleculeInformation}} or \code{\link{simulateMoleculeInformation}}.
+#' @param data List returned by \code{\link{readMolecules}} or \code{\link{simulateMolecules}}.
 #' This should contain the \code{"molecules"}, \code{"features"} and (for \code{version="3"}) \code{"libraries"} entries.
 #' @param version String specifying the version of the 10X molecule information format to write.
 #' This can be either \code{"2"} or \code{"3"}.
@@ -15,29 +15,29 @@
 #' @param num.gem.groups Integer specifying the number of GEM groups. 
 #' This is also treated as the number of libraries for \code{version="3"}.
 #'
-#' @return For \code{writeMoleculeInformation}, a new HDF5 file is created at \code{path} containing the molecule information.
+#' @return For \code{writeMolecules}, a new HDF5 file is created at \code{path} containing the molecule information.
 #' \code{NULL} is invisibly returned.
 #'
-#' For \code{simulateMoleculeInformation}, a list is returned containing \code{molecules}, \code{features}, and (for \code{version="3"}) \code{libraries}.
-#' Each of these mimic the corresponding entry in the list returned by \code{\link{readMoleculeInformation}}.
+#' For \code{simulateMolecules}, a list is returned containing \code{molecules}, \code{features}, and (for \code{version="3"}) \code{libraries}.
+#' Each of these mimic the corresponding entry in the list returned by \code{\link{readMolecules}}.
 #'
 #' @details
-#' These functions are primarily intended for examples and testing of \code{readMoleculeInformation}.
-#' The files written by \code{writeMoleculeInformation} not be sufficiently compliant with 10X's specification for use in external applications.
+#' These functions are primarily intended for examples and testing of \code{readMolecules}.
+#' The files written by \code{writeMolecules} may not be sufficiently compliant with 10X's specification for use in external applications.
 #' If you are running into interoperability issues, file an issue at \url{https://github.com/LTLA/crio} and we'll see what we can do.
 #' 
 #' @author Aaron Lun
 #'
 #' @examples
-#' sim <- simulateMoleculeInformation()
+#' sim <- simulateMolecules()
 #' tmp <- tempfile(fileext=".h5")
-#' writeMoleculeInformation(tmp, sim)
+#' writeMolecules(tmp, sim)
 #' rhdf5::h5ls(tmp)
 #' 
 #' @export
 #' @importFrom rhdf5 h5write h5createGroup h5createFile
 #' @importFrom jsonlite toJSON
-writeMoleculeInformation <- function(
+writeMolecules <- function(
     path,
     data,
     version = c("3", "2")
@@ -112,8 +112,8 @@ writeMoleculeInformation <- function(
 #' @export
 #' @importFrom S4Vectors DataFrame
 #' @importFrom stats rpois
-#' @rdname writeMoleculeInformation
-simulateMoleculeInformation <- function(
+#' @rdname writeMolecules
+simulateMolecules <- function(
     num.molecules = 10000,
     barcode.length = 4, 
     num.features = 20,

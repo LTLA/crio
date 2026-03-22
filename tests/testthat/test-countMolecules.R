@@ -20,7 +20,7 @@ REFERENCE <- function(molinfo, num.features, use.count=FALSE) {
 
 set.seed(123)
 test_that("countMolecules works correctly", {
-    sim <- simulateMoleculeInformation(num.features=20)
+    sim <- simulateMolecules(num.features=20)
     expect_true(any(sim$molecules$feature == 21)) # check that there were, indeed, features beyond the range.
 
     out <- countMolecules(20, sim$molecules$feature, sim$molecules$barcode)
@@ -47,7 +47,7 @@ test_that("countMolecules works correctly", {
 
 set.seed(456)
 test_that("countMolecules filters out NA features and barcodes", {
-    sim <- simulateMoleculeInformation(num.features=20)
+    sim <- simulateMolecules(num.features=20)
     sim$molecules$feature[1] <- NA
     sim$molecules$barcode[2] <- NA
     out <- countMolecules(20, sim$molecules$feature, sim$molecules$barcode)
@@ -59,7 +59,7 @@ test_that("countMolecules filters out NA features and barcodes", {
 
 set.seed(789)
 test_that("countMolecules sums the counts", {
-    sim <- simulateMoleculeInformation(num.features=20)
+    sim <- simulateMolecules(num.features=20)
 
     out <- countMolecules(20, sim$molecules$feature, sim$molecules$barcode, count=sim$molecules$count)
     ref <- REFERENCE(sim$molecules, num.features=20, use.count=TRUE)
