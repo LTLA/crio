@@ -355,6 +355,19 @@ test_that("readCounts works correctly with mismatching features", {
     expect_equal(assay(sce10x, withDimnames=FALSE), floor(cbind(my.counts[keep,], my.counts[keep,])))
 })
 
+test_that("readCounts works correctly with mixtures of paths and readCountsSample objects", {
+    tmpdir1 <- tempfile()
+    writeCounts(path=tmpdir1, se, version="3")
+    tmpdir2 <- tempfile()
+    writeCounts(path=tmpdir2, se, version="3")
+
+    sce10x <- readCounts(list(tmpdir1, configureSampleForReadCounts(tmpdir2, mtx.class="SVT_SparseMatrix")), delayed=TRUE)
+    expect_equal(
+        as(assay(sce10x, withDimnames=FALSE), "SVT_SparseMatrix"),
+        as(floor(cbind(my.counts, my.counts)), "SVT_SparseMatrix")
+    )
+})
+
 test_that("readCounts, use gene symbols as row names", {
     tmpdir <- tempfile()
     writeCounts(path=tmpdir, se, version="3")

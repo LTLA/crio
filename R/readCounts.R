@@ -158,6 +158,12 @@ readCounts <- function(
         names(samples) <- old.names
     } else if (inherits(samples, "readCountsSample")) {
         samples <- list(samples)
+    } else {
+        for (i in seq_along(samples)) {
+            if (is.character(samples[[i]])) {
+                samples[[i]] <- configureSampleForReadCounts(samples[[i]])
+            }
+        }
     }
 
     sample.names <- names(samples)
