@@ -19,7 +19,7 @@
 #' decodeSequences(enc, lengths=4)
 #'
 #' @seealso
-#' \code{\link{readMoleculeInformation}}, which uses a 2-bit encoding for the UMI sequences.
+#' \code{\link{readMolecules}}, which uses a 2-bit encoding for the UMI sequences.
 #'
 #' @export 
 encodeSequences <- function(sequences) {

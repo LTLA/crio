@@ -48,7 +48,7 @@
 #' 
 #' @details
 #' Molecules that were not assigned to any gene have their \code{Feature} set to \code{nrow(features) + 1}.
-#' These are removed when \code{keep.unmapped = FALSE}.
+#' These are removed when \code{keep.unmapped=FALSE}.
 #' 
 #' CellRanger 3.0 introduced a major change in the format of the molecule information files.
 #' When \code{version="auto"}, the function will attempt to determine the version format of the file.
@@ -71,7 +71,7 @@
 #' 
 #' @examples
 #' # Mocking up some 10X HDF5-formatted data.
-#' sim <- simulateMoleculeInformation()
+#' sim <- simulateMolecules()
 #' temp <- tempfile(fileext=".h5")
 #' writeMolecules(temp, sim)
 #' 

@@ -7,21 +7,21 @@
 #' A value greater than \code{num.features} indicates that the corresponding molecule is unassigned.
 #' @param barcode Factor of length equal to the number of molecules, containing the cell barcode to which each molecule was assigned.
 #' Levels are usualy barcode sequences.
-#' @param counts Integer vector of length equal to the number of molecules, containing the read counts for each molecule.
+#' @param count Integer vector of length equal to the number of molecules, containing the read counts for each molecule.
 #' If supplied, the count matrix refers to the number of reads assigned to each gene in each barcode, not the number of molecules (i.e., UMIs).
 #' @param num.threads Integer specifying the number of threads to use.
 #' @param class String specifying the output class.
 #'
 #' @return A sparse matrix of the specified \code{class}.
 #' Each row is a feature and each column is a barcode.
-#' Each entry is the number of molecules (if \code{counts=NULL}) or reads (otherwise) for the corresponding feature and barcode.
+#' Each entry is the number of molecules (if \code{count=NULL}) or reads (otherwise) for the corresponding feature and barcode.
 #' Columns are named after the corresponding levels of \code{barcode}.
 #'
 #' @author Aaron Lun
 #'
 #' @examples
 #' # Mocking up some 10X molecule information.
-#' sim <- simulateMoleculeInformation(num.features=20)
+#' sim <- simulateMolecules(num.features=20)
 #'
 #' # Formatting it into a matrix.
 #' countMolecules(20, sim$molecules$feature, sim$molecules$barcode)

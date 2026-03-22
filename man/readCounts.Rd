@@ -43,7 +43,7 @@ If unnamed, the sample identity is set to the path instead.}
 For symbols, the Ensembl id will be appended to disambiguate rows where the same symbol corresponds to multiple Ensembl ids.}
 
 \item{delayed}{Boolean indicating whether sparse matrices should be wrapped in \link[DelayedArray]{DelayedArray}s before combining.
-This saves memory by avoiding the creation of a new matrix; it also avoids integer overflow for \link[Matrix]{dgCMatrix} instances.
+This saves memory by avoiding the creation of a new matrix; it also avoids integer overflow for dgCMatrix instances.
 Only relevant for multiple \code{samples}.}
 
 \item{intersect.rows}{Boolean indicating whether to take the intersection of common row names across all samples.
@@ -143,7 +143,7 @@ Otherwise, calculation of \code{rowSums}, \code{colSums}, etc. will result in er
 }
 \examples{
 # Mocking up some 10X genomics output.
-example(write10xCounts, echo=FALSE)
+example(writeCounts, echo=FALSE)
 
 # Reading it in.
 sce10x <- readCounts(tmpdir)
@@ -176,7 +176,7 @@ HDF5 Feature Barcode Matrix Format.
 \seealso{
 \code{\link[SingleCellExperiment]{splitAltExps}}, to split alternative feature sets (e.g., antibody tags) into their own Experiments.
 
-\code{\link{write10xCounts}}, to create 10X-formatted file(s) from a count matrix.
+\code{\link{writeCounts}}, to create 10X-formatted file(s) from a count matrix.
 }
 \author{
 Davis McCarthy, with modifications from Aaron Lun.

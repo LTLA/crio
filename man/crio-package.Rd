@@ -8,13 +8,20 @@
 \description{
 Load CellRanger's output files into Bioconductor data structures, most typically a SingleCellExperiment containing assay values. Also supports writing to CellRanger formats.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/LTLA/crio}
+  \item Report bugs at \url{https://github.com/LTLA/crio/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Aaron Lun \email{infinite.monkeys.with.keyboards@gmail.com}
 
 Other contributors:
 \itemize{
   \item Jonathan Griffiths [contributor]
-  \item Davis McCarthy [contributor]
 }
 
 }

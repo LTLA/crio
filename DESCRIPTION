@@ -3,9 +3,9 @@ Version: 0.99.0
 Date: 2021-05-21
 Title: CellRanger Input/Output
 Authors@R: c(
-    person("Aaron", "Lun", role = c("aut", "cre"), email = "infinite.monkeys.with.keyboards@gmail.com"), 
-    person("Jonathan", "Griffiths", role="ctb"), 
-    person("Davis", "McCarthy", role="ctb"))
+        person("Aaron", "Lun", role = c("aut", "cre"), email = "infinite.monkeys.with.keyboards@gmail.com"), 
+        person("Jonathan", "Griffiths", role="ctb")
+    )
 Description: 
     Load CellRanger's output files into Bioconductor data structures, most typically a SingleCellExperiment containing assay values.
     Also supports writing to CellRanger formats.
@@ -17,18 +17,22 @@ Imports:
     Matrix,
     beachmat,
     Rcpp,
-    BiocGenerics,
+    BiocParallel,
     S4Vectors,
+    IRanges,
+    GenomicRanges,
     SummarizedExperiment,
-    S4Arrays,
+    DelayedArray,
+    SparseArray,
     HDF5Array,
-    rhdf5
+    rhdf5,
+    jsonlite
 Suggests: 
     testthat,
     knitr,
     BiocStyle,
     rmarkdown,
-    jsonlite,
+    R.utils,
     DropletTestFiles
 LinkingTo:
     Rcpp,
@@ -47,5 +51,7 @@ License: GPL-3
 NeedsCompilation: yes
 VignetteBuilder: knitr
 SystemRequirements: C++17, GNU make
+URL: https://github.com/LTLA/crio
+BugReports: https://github.com/LTLA/crio/issues
 RoxygenNote: 7.3.3
 Encoding: UTF-8

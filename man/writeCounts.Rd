@@ -25,11 +25,17 @@ writeCounts(
 )
 }
 \arguments{
-\item{path}{A string containing the path to the output directory (for \code{type="mtx"}) or file (for \code{type="HDF5"}).}
+\item{path}{String containing the path to the output files.
+Specifically, this is a path to a directory, for \code{type="mtx"};
+a prefix of the file paths, for \code{type="prefix"};
+and a path to the HDF5 file, for \code{type="hdf5"}.}
 
 \item{x}{A \link[SummarizedExperiment]{SummarizedExperiment} containing a matrix of UMI counts.}
 
 \item{assay}{Integer or string specifying the assay of \code{x} containing the count matrix to be written.}
+
+\item{force.integer}{Boolean specifying whether entries of the count matrix should be truncated to their integer component.
+This can be set to \code{FALSE} to preserve non-integer values in the on-disk representation.}
 
 \item{barcode.field}{String containing the name of the \code{\link[SummarizedExperiment]{colData}} column containing the cell barcodes.
 If \code{NULL}, the column names of \code{x} are assumed to contain the barcodes.}
@@ -48,27 +54,28 @@ Only used when \code{version="3"}.}
 
 \item{type}{String specifying the type of 10X format to save \code{x} to.
 This is either a directory containing a sparse matrix with row/column annotation (\code{"mtx"})
-or a HDF5 file containing the same information (\code{"HDF5"}).}
+or a HDF5 file containing the same information (\code{"hdf5"}).}
 
 \item{version}{String specifying the version of the CellRanger format to produce.}
 
-\item{genome}{String specifying the genome for storage when \code{type="HDF5"}.
+\item{genome}{String specifying the genome for storage when \code{type="hdf5"}.
 This can be a character vector with one genome per feature if \code{version="3"}.}
 
-\item{chemistry, original.gem.groups, library.ids}{Strings containing metadata attributes to be added to the HDF5 file for \code{type="HDF5"}.
+\item{compressed}{Boolean specifying whether the files at \code{path} should be compressed.
+Only used for \code{type="mtx"} or \code{"prefix"}.
+Defaults to \code{TRUE} for \code{version="3"}.}
+
+\item{chemistry, original.gem.groups, library.ids}{Strings containing metadata attributes to be added to the HDF5 file for \code{type="hdf5"}.
 Their interpretation is not formally documented and is left to the user's imagination.}
 
 \item{num.threads}{Integer specifying the number of threads to use for counting the number of non-zero elements.}
-
-\item{force.integers}{Boolean specifying whether entries of the count matrix should be truncated to their integer component.
-This can be set to \code{FALSE} to preserve non-integer values in the on-disk representation.}
 }
 \value{
 For \code{type="mtx"}, a directory is produced at \code{path}.
 If \code{version="2"}, this will contain the files \code{"matrix.mtx"}, \code{"barcodes.tsv"} and \code{"genes.tsv"}.
 If \code{version="3"}, it will instead contain \code{"matrix.mtx.gz"}, \code{"barcodes.tsv.gz"} and \code{"features.tsv.gz"}.
 
-For \code{type="HDF5"}, a HDF5 file is produced at \code{path} containing data in column-sparse format.
+For \code{type="hdf5"}, a HDF5 file is produced at \code{path} containing data in column-sparse format.
 If \code{version="2"}, data are stored in the HDF5 group named \code{genome}.
 If \code{version="3"}, data are stored in the group \code{"matrix"}.
 
@@ -80,16 +87,17 @@ in the format produced by the CellRanger software suite.
 }
 \details{
 This function will try to automatically detect the desired format based on whether \code{path} ends with \code{".h5"}.
-If so, it assumes that \code{path} specifies a HDF5 file path and sets \code{type="HDF5"}.
-Otherwise it will set \code{type="mtx"} under the assumption that \code{path} specifies a path to a directory.
+If so, it assumes that \code{path} specifies a HDF5 file path and sets \code{type="hdf5"}.
+Otherwise it will default to \code{type="mtx"} under the assumption that \code{path} specifies a path to an output directory.
 
 Note that there were major changes in the output format for CellRanger version 3.0 to account for non-gene features such as antibody or CRISPR tags. 
 Users can switch to this new format using \code{version="3"}.
 See the documentation for \dQuote{latest} for this new format, otherwise see \dQuote{2.2} or earlier.
 
-The primary purpose of this function is to create files to use for testing \code{\link{read10xCounts}}.
-In principle, it is possible to re-use the HDF5 matrices in \code{cellranger reanalyze}.
-We recommend against doing so routinely due to CellRanger's dependence on undocumented metadata attributes that may change without notice.
+The primary purpose of this function is to create files to use for testing \code{\link{readCounts}}.
+In principle, it is possible to re-use the HDF5 matrices in external applications like \code{cellranger reanalyze}, 
+but your mileage may vary due to some undocumented aspects of 10X's file specification. 
+If you are running into interoperability issues, file an issue at \url{https://github.com/LTLA/crio} and we'll see what we can do.
 }
 \examples{
 # Mocking up some count data.
@@ -132,7 +140,7 @@ HDF5 Feature Barcode Matrix Format.
 \url{https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/advanced/h5_matrices}
 }
 \seealso{
-\code{\link{read10xCounts}}, to read CellRanger matrices into R.
+\code{\link{readCounts}}, to read CellRanger matrices into R.
 }
 \author{
 Aaron Lun
