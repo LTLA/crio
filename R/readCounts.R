@@ -54,6 +54,9 @@
 #' @param mtx.class String specifying the class of the output matrix when \code{type="mtx"} or \code{type="prefix"}.
 #' @param mtx.threads Boolean specifying the number of threads to use for reading Matrix Market files.
 #' Only relevant when \code{type="mtx"} or \code{type="prefix"}.
+#' @param hdf5.realize Boolean specifying whether the count data should be loaded into memory for \code{type="hdf5"}.
+#' If \code{FALSE}, the count matrix is represented as a file-backed matrix.
+#' @param hdf5.realize.class String specifying the class of the output matrix when \code{type="hdf5"} and \code{hdf5.realize=TRUE}.
 #' 
 #' @return 
 #' For \code{readCounts}, a \link[SingleCellExperiment]{SingleCellExperiment} object containing count data for each genomic feature (row) and cell (column) across all \code{samples}.
@@ -75,7 +78,7 @@
 #' Note that the matrix representation will depend on the format of the \code{samples}:
 #' \itemize{
 #' \item For \code{type="prefix"} or \code{type="mtx"}, the class of the matrix is determined by \code{mtx.class}.
-#' Otherwise, for \code{type="hdf5"}, the matrix is a \link[HDF5Array]{HDF5Matrix}.
+#' For \code{type="hdf5"}, the matrix is a \link[HDF5Array]{HDF5Matrix} if \code{hdf5.realize=FALSE}, otherwise its class is determined by \code{hdf5.realize.class}.
 #' \item If multiple samples are present, the class of the matrix is determined by the return type of \code{cbind} on the per-sample matrices.
 #' This can be forced to be a \link[DelayedArray]{DelayedMatrix} by setting \code{delayed=TRUE}. 
 #' }
@@ -266,7 +269,9 @@ configureSampleForReadCounts <- function(
     compressed = NULL, 
     mtx.two.pass = FALSE,
     mtx.class = c("CsparseMatrix", "SVT_SparseMatrix"),
-    mtx.threads = 1
+    mtx.threads = 1,
+    hdf5.realize = FALSE,
+    hdf5.realize.class = c("CsparseMatrix", "SVT_SparseMatrix")
 ) {
     output <- list(
         path = path,
@@ -276,7 +281,9 @@ configureSampleForReadCounts <- function(
         compressed = compressed,
         mtx.two.pass = mtx.two.pass,
         mtx.class = match.arg(mtx.class),
-        mtx.threads = mtx.threads
+        mtx.threads = mtx.threads,
+        hdf5.realize = hdf5.realize,
+        hdf5.realize.class = match.arg(hdf5.realize.class)
     )
     class(output) <- "readCountsSample"
     output
@@ -298,7 +305,9 @@ configureSampleForReadCounts <- function(
         .read_from_hdf5(
             sample$path,
             genome = sample$genome,
-            version = sample$version
+            version = sample$version,
+            hdf5.realize = sample$hdf5.realize,
+            hdf5.realize.class = sample$hdf5.realize.class
         )
     }
 }
@@ -393,7 +402,7 @@ configureSampleForReadCounts <- function(
 #' @importFrom rhdf5 h5ls h5read
 #' @importFrom HDF5Array TENxMatrix
 #' @importFrom utils head
-.read_from_hdf5 <- function(path, genome=NULL, version) {
+.read_from_hdf5 <- function(path, genome, version, hdf5.realize, hdf5.realize.class) {
     path <- path.expand(path) # eliminate tilde's.
     available <- h5ls(path, recursive=FALSE)
     available <- available[available$otype=="H5I_GROUP",]
@@ -438,6 +447,11 @@ configureSampleForReadCounts <- function(
 
     mat <- TENxMatrix(path, group)
     dimnames(mat) <- NULL # for consistency.
+
+    if (hdf5.realize) {
+        mat <- as(mat, hdf5.realize.class)
+    }
+
     list(
         mat=mat,
         cell.names=as.character(h5read(path, paste0(group, "/barcodes"))),

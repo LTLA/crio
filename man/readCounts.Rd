@@ -22,7 +22,9 @@ configureSampleForReadCounts(
   compressed = NULL,
   mtx.two.pass = FALSE,
   mtx.class = c("CsparseMatrix", "SVT_SparseMatrix"),
-  mtx.threads = 1
+  mtx.threads = 1,
+  hdf5.realize = FALSE,
+  hdf5.realize.class = c("CsparseMatrix", "SVT_SparseMatrix")
 )
 }
 \arguments{
@@ -91,6 +93,11 @@ Only relevant when \code{type="mtx"} or \code{type="prefix"}.}
 
 \item{mtx.threads}{Boolean specifying the number of threads to use for reading Matrix Market files.
 Only relevant when \code{type="mtx"} or \code{type="prefix"}.}
+
+\item{hdf5.realize}{Boolean specifying whether the count data should be loaded into memory for \code{type="hdf5"}.
+If \code{FALSE}, the count matrix is represented as a file-backed matrix.}
+
+\item{hdf5.realize.class}{String specifying the class of the output matrix when \code{type="hdf5"} and \code{hdf5.realize=TRUE}.}
 }
 \value{
 For \code{readCounts}, a \link[SingleCellExperiment]{SingleCellExperiment} object containing count data for each genomic feature (row) and cell (column) across all \code{samples}.
@@ -112,7 +119,7 @@ Matrices are combined by column if multiple \code{samples} were specified.
 Note that the matrix representation will depend on the format of the \code{samples}:
 \itemize{
 \item For \code{type="prefix"} or \code{type="mtx"}, the class of the matrix is determined by \code{mtx.class}.
-Otherwise, for \code{type="hdf5"}, the matrix is a \link[HDF5Array]{HDF5Matrix}.
+For \code{type="hdf5"}, the matrix is a \link[HDF5Array]{HDF5Matrix} if \code{hdf5.realize=FALSE}, otherwise its class is determined by \code{hdf5.realize.class}.
 \item If multiple samples are present, the class of the matrix is determined by the return type of \code{cbind} on the per-sample matrices.
 This can be forced to be a \link[DelayedArray]{DelayedMatrix} by setting \code{delayed=TRUE}. 
 }

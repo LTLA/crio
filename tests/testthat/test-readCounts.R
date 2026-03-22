@@ -305,6 +305,21 @@ test_that("readCounts works correctly for HDF5 counts, version == 3", {
     expect_identical(sce10x$barcode, colnames(se))
 })
 
+test_that("readCounts realizes HDF5 counts correctly", {
+    tmph5 <- tempfile(fileext=".h5")
+    gene.type <- sample(LETTERS, ngenes, replace=TRUE)
+    rowData(se)$type <- gene.type
+    writeCounts(path=tmph5, se, version="3")
+
+    sce10x <- readCounts(configureSampleForReadCounts(tmph5, hdf5.realize=TRUE))
+    alt.counts <- floor(my.counts)
+    dimnames(alt.counts) <- NULL
+    expect_identical(counts(sce10x, withDimnames=FALSE), alt.counts)
+
+    sce10x <- readCounts(configureSampleForReadCounts(tmph5, hdf5.realize=TRUE, hdf5.realize.class="SVT_SparseMatrix"))
+    expect_s4_class(counts(sce10x), "SVT_SparseMatrix")
+})
+
 test_that("readCounts works correctly for prefixes", {
     tmpdir1 <- tempfile()
     writeCounts(path=tmpdir1, se, version="3")
