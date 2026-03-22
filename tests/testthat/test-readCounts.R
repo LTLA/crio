@@ -366,9 +366,14 @@ test_that("readCounts works correctly with mixtures of paths and readCountsSampl
         as(assay(sce10x, withDimnames=FALSE), "SVT_SparseMatrix"),
         as(floor(cbind(my.counts, my.counts)), "SVT_SparseMatrix")
     )
+
+    # Also works in parallel.
+    sce10x.par <- readCounts(list(tmpdir1, tmpdir2), BPPARAM=BiocParallel::SnowParam(2))
+    expect_s4_class(assay(sce10x.par), "dgCMatrix")
+    expect_identical(ncol(sce10x.par), ncol(sce10x))
 })
 
-test_that("readCounts, use gene symbols as row names", {
+test_that("readCounts uses gene symbols as row names", {
     tmpdir <- tempfile()
     writeCounts(path=tmpdir, se, version="3")
     sce10x <- readCounts(tmpdir, row.names = "symbol")

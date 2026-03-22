@@ -19,6 +19,7 @@
 #' @param intersect.rows Boolean indicating whether to take the intersection of common row names across all samples.
 #' If \code{FALSE}, differences in row names across samples will cause an error to be raised.
 #' @param BPPARAM A \link[BiocParallel]{BiocParallelParam} object specifying how loading should be parallelized for multiple \code{samples}.
+#' If \code{NULL}, no parallelization is performed.
 #' @param path String specifying the path to the CellRanger output for a single sample.
 #' \itemize{
 #' \item If \code{type="hdf5"}, \code{path} should be a HDF5 file in the 10X sparse HDF5 format. 
@@ -139,7 +140,6 @@
 #' @export
 #' @importFrom S4Vectors cbind DataFrame ROWNAMES<- ROWNAMES extractROWS
 #' @importFrom SingleCellExperiment SingleCellExperiment
-#' @importFrom BiocParallel SerialParam bplapply
 #' @importFrom GenomicRanges GRanges
 #' @importFrom DelayedArray DelayedArray
 readCounts <- function(
@@ -148,7 +148,7 @@ readCounts <- function(
     row.names = c("id", "symbol"),
     delayed = FALSE,
     intersect.rows = FALSE,
-    BPPARAM= SerialParam()
+    BPPARAM = NULL
 ) {
     row.names <- match.arg(row.names)
 
@@ -172,7 +172,11 @@ readCounts <- function(
         sample.names <- sample.paths
     }
 
-    load.out <- bplapply(samples, FUN=.tenx_loader, BPPARAM=BPPARAM)
+    if (is.null(BPPARAM)) {
+        load.out <- lapply(samples, FUN=.tenx_loader)
+    } else {
+        load.out <- BiocParallel::bplapply(samples, FUN=.tenx_loader, BPPARAM=BPPARAM)
+    }
 
     nsets <- length(samples)
     full_data <- vector("list", nsets)

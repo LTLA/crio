@@ -11,7 +11,7 @@ readCounts(
   row.names = c("id", "symbol"),
   delayed = FALSE,
   intersect.rows = FALSE,
-  BPPARAM = SerialParam()
+  BPPARAM = NULL
 )
 
 configureSampleForReadCounts(
@@ -49,7 +49,8 @@ Only relevant for multiple \code{samples}.}
 \item{intersect.rows}{Boolean indicating whether to take the intersection of common row names across all samples.
 If \code{FALSE}, differences in row names across samples will cause an error to be raised.}
 
-\item{BPPARAM}{A \link[BiocParallel]{BiocParallelParam} object specifying how loading should be parallelized for multiple \code{samples}.}
+\item{BPPARAM}{A \link[BiocParallel]{BiocParallelParam} object specifying how loading should be parallelized for multiple \code{samples}.
+If \code{NULL}, no parallelization is performed.}
 
 \item{path}{String specifying the path to the CellRanger output for a single sample.
 \itemize{

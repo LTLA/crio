@@ -17,7 +17,6 @@ Imports:
     Matrix,
     beachmat,
     Rcpp,
-    BiocParallel,
     S4Vectors,
     IRanges,
     GenomicRanges,
@@ -33,6 +32,7 @@ Suggests:
     BiocStyle,
     rmarkdown,
     R.utils,
+    BiocParallel,
     DropletTestFiles
 LinkingTo:
     Rcpp,
