@@ -1,0 +1,247 @@
+---
+title: "CellRanger input/output functions"
+author: "Aaron Lun"
+package: crio 
+output: 
+  BiocStyle::html_document
+vignette: >
+  %\VignetteIndexEntry{Read and write CellRanger formats}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}  
+---
+
+```{r, echo=FALSE, results="hide", message=FALSE}
+require(knitr)
+opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
+self <- BiocStyle::Biocpkg("crio")
+```
+
+# Overview
+
+CellRanger is a software suite developed by [10X Genomics](https://10xgenomics.com) for processing their single-cell genomics data.
+`r self` implements several functions for reading some CellRanger output formats into Bioconductor objects.
+This includes the feature-barcode matrix in either the Matrix Market or HDF5 formats and the HDF5 molecule information files.
+It also provides functions for writing data back into CellRanger-formatted files.
+
+To get started, run the usual Bioconductor installation instructions:
+
+```r
+install.packages("BiocManager")
+BiocManager::install("crio")
+```
+
+# Feature-barcode count matrix
+
+## Quick start 
+ 
+The most important output from CellRanger is the feature-barcode count matrix.
+Each row is a genomic feature, each column is a cell barcode, and each entry contains the number of UMIs assigned to the corresponding feature/barcode combination.
+Let's demonstrate on some public data from the `r BiocStyle::Biocpkg("DropletTestFiles")` package:
+
+```{r}
+library(DropletTestFiles)
+tarball <- getTestFile("tenx-3.0.0-pbmc_10k_protein_v3/1.0.0/filtered.tar.gz")
+tmp <- tempfile()
+dir.create(tmp)
+untar(tarball, exdir=tmp)
+list.files(tmp, recursive=TRUE)
+```
+
+We use the `readCounts()` function to read this into a `SingleCellExperiment` object:
+
+```{r}
+library(crio)
+sce <- readCounts(file.path(tmp, "filtered_feature_bc_matrix"))
+sce
+class(assay(sce))
+rowData(sce)
+colData(sce)
+```
+
+## Read parameters
+
+We use `configureSampleForReadCounts()` to customize the method used to read each sample.
+For example:
+
+- We specify the type of our format as `"mtx"` (i.e., Matrix Market).
+  This is usually guessed from the path but it doesn't hurt to be explicit. 
+- `dgCMatrix` objects are the "default" sparse matrix representation in R,
+  but cannot support very large sparse matrices where the number of non-zero elements exceeds `.Machine$integer.max`. 
+  So, we can instead use the `SVT_SparseMatrix` representation.
+- We accelerate the file parsing by using multiple threads.
+
+```{r}
+my.sample <- configureSampleForReadCounts(
+    file.path(tmp, "filtered_feature_bc_matrix"),
+    type = "mtx",
+    mtx.class = "SVT_SparseMatrix",
+    mtx.threads = 2
+)
+sce <- readCounts(my.sample)
+class(assay(sce))
+```
+
+Alternatively, let's consider using the HDF5 format for the feature-barcode count matrices.
+The HDF5 format can be more convenient as all of the bits and pieces are stored in one file.
+In addition, HDF5 is often more efficient to read from than text formats as parsing of text is not required.
+We specify the `type=` here as `readCounts()`'s auto-guessing relies on the file extension,
+but cached downloads from `r BiocStyle::Biocpkg("DropletTestFiles")` use a custom naming scheme that removes the original file extension.
+
+```{r}
+library(DropletTestFiles)
+h5file <- getTestFile("tenx-3.1.0-5k_pbmc_protein_v3/1.0.0/filtered.h5")
+sce <- readCounts(configureSampleForReadCounts(h5file, type = "hdf5"))
+sce
+
+# With HDF5, our matrix is file-backed instead of being loaded into memory.
+# This reduces memory usage while manipulating the data as copies do not
+# need to be created for each operation.
+class(assay(sce))
+
+# However, it is best to load the data into memory prior to any actual
+# analyses, otherwise the computation will be very slow when data needs to be
+# repeatedly pulled from disk. We could also do this by setting
+# hdf5.realize=TRUE in the configuration for this sample.
+assay(sce) <- as(assay(sce), "dgCMatrix")
+```
+
+We can also combine multiple samples into one `SingleCellExperiment`, possibly with sample-specific parameters.
+Here, we only keep the intersection of row names across all samples.
+We can delay the `cbind()` operation when combining matrices to reduce memory usage.
+
+```{r}
+sce <- readCounts(
+    list(
+        FOO = file.path(tmp, "filtered_feature_bc_matrix"),
+        BAR = configureSampleForReadCounts(h5file, type = "hdf5", hdf5.realize = TRUE)
+    ),
+    intersect.rows = TRUE,
+    delayed = TRUE
+)
+sce
+
+assay(sce)
+colData(sce)
+```
+
+## Writing to disk
+
+Given a `SingleCellExperiment` object, we can write its contents to a CellRanger-compatible file format.
+First, let's mock something up:
+
+```{r}
+# Mocking up some count data.
+library(Matrix)
+my.counts <- matrix(rpois(1000, lambda=5), ncol=10, nrow=100)
+my.counts <- as(my.counts, "dgCMatrix")
+
+library(SummarizedExperiment)
+se <- SummarizedExperiment(my.counts)
+colnames(se) <- paste0("BARCODE-", seq_len(ncol(my.counts)))
+rownames(se) <- paste0("ENSG0000", seq_len(nrow(my.counts)))
+rowData(se)$name <- paste0("GENE", seq_len(nrow(my.counts)))
+rowData(se)$type <- "Gene Expression"
+```
+
+Now we write it to disk.
+Here, we'll use the Matrix Market format, but we can also save to HDF5 if we want.
+
+```{r}
+tmp <- tempfile()
+writeCounts(se, path=tmp, type="mtx")
+list.files(tmp, recursive=TRUE)
+```
+
+Reloading it is straightforward:
+
+```{r}
+readCounts(tmp)
+```
+
+In principle, it is possible to re-use the files created by `writeCounts()` in external applications like `cellranger reanalyze`, 
+but mileage may vary due to some undocumented aspects of 10X's file specifications. 
+If you are running into interoperability issues, file an [issue](https://github.com/LTLA/crio) and we'll see what we can do.
+
+# Molecule information
+
+## Quick start
+
+The molecule information file contains - as its name suggests - information about all of the successfully sequenced (transcript) molecules.
+This is occasionally useful for troubleshooting, e.g., to diagnose issues from barcode swapping or chimeric reads. 
+Let's fetch one of these files and load it in:
+
+```{r}
+molpath <- getTestFile("tenx-2.1.0-pbmc4k/1.0.0/mol_info.h5")
+
+# Let's also load in molecules that weren't mapped.
+molinfo <- readMolecules(molpath, keep.unmapped=TRUE)
+molinfo$molecules
+
+# Each entry of the 'feature' column refers to a row of 'features'.
+molinfo$features
+```
+
+Now we can do some interesting things like counting the number of unassigned molecules or the average coverage of each molecule:
+
+```{r}
+# Unmapped molecules have 'feature' set to the number of features plus 1.
+sum(molinfo$molecules$feature == nrow(molinfo$features) + 1L)
+
+# 'count' contains the read coverage for each molecule. 
+mean(molinfo$molecules$count)
+```
+
+The UMI sequence is stored as a 2-bit encoding, which we can decode into the base sequence if we know the UMI length.
+You'll have to look this up in 10X's sequence design - for this particular dataset, I think it's 10 nt.
+
+```{r}
+decodeSequences(molinfo$molecules$umi[1:20], length=10)
+```
+
+## Making a count matrix
+
+We can convert the molecule information `DataFrame` back into a count matrix with `countMolecules()`.
+This can be used to obtain counts for further analysis after filtering out certain molecules,
+e.g., those without enough read coverage or after using a more careful UMI deduplication scheme.
+
+```{r}
+counts <- countMolecules(nrow(molinfo$features), molinfo$molecules$feature, molinfo$molecules$barcode)
+dim(counts)
+```
+
+In fact, we can more-or-less recover the `SingleCellExperiment` that we would have gotten from `readCounts()` on the raw count matrix (i.e., before cell calling).
+
+```{r}
+sce <- SingleCellExperiment(list(counts = counts), rowData = molinfo$features)
+sce$barcode <- colnames(sce)
+rownames(sce) <- rowData(sce)$id
+sce
+```
+
+## Writing to disk
+
+On some rare occasions, we may want to write the molecule information to file.
+This can be done with the `writeMolecules()` function:
+
+```{r}
+# Making up some molecule information.
+sim <- simulateMolecules()
+tmp <- tempfile(fileext=".h5")
+writeMolecules(tmp, sim)
+```
+
+Now we can read it back in as if it came from CellRanger itself:
+
+```{r}
+readMolecules(tmp)
+```
+
+Again, it is theoretically possible to re-use the files created by `writeMolecules()` in external applications, 
+but mileage may vary due to some undocumented aspects of 10X's file specifications. 
+File any problems in the [GitHub repository](https://github.com/LTLA/crio) and we'll see what we can do.
+
+# Session information {-}
+
+```{r}
+sessionInfo()
+```
