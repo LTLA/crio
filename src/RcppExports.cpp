@@ -31,6 +31,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// make_count_matrix
+Rcpp::RObject make_count_matrix(int nrow, int ncol, Rcpp::IntegerVector features, Rcpp::IntegerVector barcodes, Rcpp::Nullable<Rcpp::IntegerVector> counts, bool create_svt, int num_threads);
+RcppExport SEXP _crio_make_count_matrix(SEXP nrowSEXP, SEXP ncolSEXP, SEXP featuresSEXP, SEXP barcodesSEXP, SEXP countsSEXP, SEXP create_svtSEXP, SEXP num_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< int >::type nrow(nrowSEXP);
+    Rcpp::traits::input_parameter< int >::type ncol(ncolSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type features(featuresSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type barcodes(barcodesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::IntegerVector> >::type counts(countsSEXP);
+    Rcpp::traits::input_parameter< bool >::type create_svt(create_svtSEXP);
+    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(make_count_matrix(nrow, ncol, features, barcodes, counts, create_svt, num_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // read_cell_barcodes
 Rcpp::StringVector read_cell_barcodes(std::string fname, std::string dname, Rcpp::Nullable<Rcpp::IntegerVector> barcodelen);
 RcppExport SEXP _crio_read_cell_barcodes(SEXP fnameSEXP, SEXP dnameSEXP, SEXP barcodelenSEXP) {
@@ -100,6 +116,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_crio_encode_sequences", (DL_FUNC) &_crio_encode_sequences, 1},
     {"_crio_decode_sequences", (DL_FUNC) &_crio_decode_sequences, 2},
+    {"_crio_make_count_matrix", (DL_FUNC) &_crio_make_count_matrix, 7},
     {"_crio_read_cell_barcodes", (DL_FUNC) &_crio_read_cell_barcodes, 3},
     {"_crio_write_cell_barcodes", (DL_FUNC) &_crio_write_cell_barcodes, 3},
     {"_crio_read_mm", (DL_FUNC) &_crio_read_mm, 4},

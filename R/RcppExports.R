@@ -9,6 +9,10 @@ decode_sequences <- function(encoded, lengths) {
     .Call('_crio_decode_sequences', PACKAGE = 'crio', encoded, lengths)
 }
 
+make_count_matrix <- function(nrow, ncol, features, barcodes, counts, create_svt, num_threads) {
+    .Call('_crio_make_count_matrix', PACKAGE = 'crio', nrow, ncol, features, barcodes, counts, create_svt, num_threads)
+}
+
 read_cell_barcodes <- function(fname, dname, barcodelen) {
     .Call('_crio_read_cell_barcodes', PACKAGE = 'crio', fname, dname, barcodelen)
 }
