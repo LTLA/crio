@@ -93,10 +93,10 @@ test_that("readCounts works correctly for sparse counts, version == 2", {
     writeCounts(path=tmpdir2, se, assay="foo", version="2")
 
     sce10x2 <- readCounts(tmpdir2)
-    alt.counts <- floor(my.counts * 2)
-    rownames(alt.counts) <- rownames(se)
-    colnames(alt.counts) <- NULL
-    expect_equal(assay(sce10x2), alt.counts)
+    alt.counts2 <- floor(my.counts * 2)
+    rownames(alt.counts2) <- rownames(se)
+    colnames(alt.counts2) <- NULL
+    expect_equal(assay(sce10x2), alt.counts2)
 
     ref <- cbind(sce10x, sce10x2)
     colnames(ref) <- NULL
@@ -105,6 +105,12 @@ test_that("readCounts works correctly for sparse counts, version == 2", {
     expect_equal(rowData(ref), rowData(combined))
     expect_equal(colData(ref), colData(combined))
     expect_equal(assay(ref), assay(combined))
+
+    # Respects the configuration options passed for all samples.
+    combined2 <- readCounts(c(tmpdir, tmpdir2), mtx.class="SVT_SparseMatrix")
+    expected <- as(assay(ref), "SVT_SparseMatrix")
+    type(expected) <- "integer"
+    expect_equal(assay(combined2), expected)
 })
 
 test_that("readCounts works correctly with chromosomal positions in the features", {

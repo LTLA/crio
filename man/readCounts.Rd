@@ -11,7 +11,8 @@ readCounts(
   row.names = c("id", "symbol"),
   delayed = FALSE,
   intersect.rows = FALSE,
-  BPPARAM = NULL
+  BPPARAM = NULL,
+  ...
 )
 
 configureSampleForReadCounts(
@@ -28,14 +29,17 @@ configureSampleForReadCounts(
 )
 }
 \arguments{
-\item{samples}{A list of sample information.
-Each element corresponds to a sample and is itself a list returned by \code{configureSampleForReadCounts}.
-
-Alternatively, a character vector of paths.
+\item{samples}{A character vector of paths.
 Each entry will be interpreted as described below for \code{path} with an automatically-detected \code{type}.
 
+Alternatively, a list of sample information.
+Each element corresponds to a sample and is either a list returned by \code{configureSampleForReadCounts} or a string containing a path.
+
 In both cases, the list or vector can be named, in which case the names are used to identify each sample in the output object.
-If unnamed, the sample identity is set to the path instead.}
+If unnamed, the sample identity is set to the path instead.
+
+Users may also pass the output of a single call to \code{configureSampleForReadCounts}. 
+This is treated as a list of length 1 containing the configuration of the lone sample.}
 
 \item{column.names}{Boolean indicating whether the columns of the output object should be named with the cell barcodes.}
 
@@ -51,6 +55,9 @@ If \code{FALSE}, differences in row names across samples will cause an error to 
 
 \item{BPPARAM}{A \link[BiocParallel]{BiocParallelParam} object specifying how loading should be parallelized for multiple \code{samples}.
 If \code{NULL}, no parallelization is performed.}
+
+\item{...}{Further arguments to pass to \code{configureSampleForReadCounts} when any entry of \code{samples} is a string representing a path.
+All such paths in \code{samples} are internally configured with these parameters.}
 
 \item{path}{String specifying the path to the CellRanger output for a single sample.
 \itemize{

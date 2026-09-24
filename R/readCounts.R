@@ -2,14 +2,17 @@
 #' 
 #' Creates a \link[SingleCellExperiment]{SingleCellExperiment} from the CellRanger output directories for 10X Genomics data.
 #' 
-#' @param samples A list of sample information.
-#' Each element corresponds to a sample and is itself a list returned by \code{configureSampleForReadCounts}.
-#'
-#' Alternatively, a character vector of paths.
+#' @param samples A character vector of paths.
 #' Each entry will be interpreted as described below for \code{path} with an automatically-detected \code{type}.
+#'
+#' Alternatively, a list of sample information.
+#' Each element corresponds to a sample and is either a list returned by \code{configureSampleForReadCounts} or a string containing a path.
 #'
 #' In both cases, the list or vector can be named, in which case the names are used to identify each sample in the output object.
 #' If unnamed, the sample identity is set to the path instead.
+#'
+#' Users may also pass the output of a single call to \code{configureSampleForReadCounts}. 
+#' This is treated as a list of length 1 containing the configuration of the lone sample.
 #' @param column.names Boolean indicating whether the columns of the output object should be named with the cell barcodes.
 #' @param row.names String specifying whether to use Ensembl ids ("id") or gene symbols ("name") as row names. 
 #' For symbols, the Ensembl id will be appended to disambiguate rows where the same symbol corresponds to multiple Ensembl ids.
@@ -58,6 +61,8 @@
 #' @param hdf5.realize Boolean specifying whether the count data should be loaded into memory for \code{type="hdf5"}.
 #' If \code{FALSE}, the count matrix is represented as a file-backed matrix.
 #' @param hdf5.realize.class String specifying the class of the output matrix when \code{type="hdf5"} and \code{hdf5.realize=TRUE}.
+#' @param ... Further arguments to pass to \code{configureSampleForReadCounts} when any entry of \code{samples} is a string representing a path.
+#' All such paths in \code{samples} are internally configured with these parameters.
 #' 
 #' @return 
 #' For \code{readCounts}, a \link[SingleCellExperiment]{SingleCellExperiment} object containing count data for each genomic feature (row) and cell (column) across all \code{samples}.
@@ -148,20 +153,21 @@ readCounts <- function(
     row.names = c("id", "symbol"),
     delayed = FALSE,
     intersect.rows = FALSE,
-    BPPARAM = NULL
+    BPPARAM = NULL,
+    ...
 ) {
     row.names <- match.arg(row.names)
 
     if (is.character(samples)) {
         old.names <- names(samples)
-        samples <- lapply(samples, configureSampleForReadCounts)
+        samples <- lapply(samples, configureSampleForReadCounts, ...)
         names(samples) <- old.names
     } else if (inherits(samples, "readCountsSample")) {
         samples <- list(samples)
     } else {
         for (i in seq_along(samples)) {
             if (is.character(samples[[i]])) {
-                samples[[i]] <- configureSampleForReadCounts(samples[[i]])
+                samples[[i]] <- configureSampleForReadCounts(samples[[i]], ...)
             }
         }
     }
