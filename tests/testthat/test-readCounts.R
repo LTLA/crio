@@ -458,20 +458,72 @@ test_that("readCounts with a shuffled Matrix Market file", {
     expect_equal(counts(sce10x.mc), alt.counts)
 })
 
-set.seed(2009)
 test_that("readCounts for floating-point data", {
     tmpdir <- tempfile()
     writeCounts(path=tmpdir, se, version="3", force.integer=FALSE)
+
     sce10x <- readCounts(tmpdir)
     expect_identical(counts(sce10x, withDimnames=FALSE), my.counts)
+    sce10x <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE))
+    expect_identical(counts(sce10x, withDimnames=FALSE), my.counts)
     sce10x <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix"))
+    expect_identical(counts(sce10x, withDimnames=FALSE), as(my.counts, "SVT_SparseArray"))
+    sce10x <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix", mtx.two.pass=TRUE))
     expect_identical(counts(sce10x, withDimnames=FALSE), as(my.counts, "SVT_SparseArray"))
 
     tmph5 <- tempfile(fileext=".h5")
     writeCounts(path=tmph5, se, version="3", force.integer=FALSE)
-    sce10x <- readCounts(tmpdir)
+    sce10x <- readCounts(tmph5)
     denseref <- as.matrix(my.counts)
     expect_identical(as.matrix(counts(sce10x, withDimnames=FALSE)), denseref)
+    sce10x <- readCounts(configureSampleForReadCounts(tmph5, mtx.class="SVT_SparseMatrix"))
+    expect_identical(as.matrix(counts(sce10x, withDimnames=FALSE)), denseref)
+})
+
+test_that("readCounts for empty columns", {
+    tmpdir <- tempfile()
+    my.counts[,seq_len(ncol(se)) %% 2 == 0] <- 0
+    assay(se, withDimnames=FALSE) <- my.counts
+    writeCounts(path=tmpdir, se, version="3", force.integer=FALSE)
+
+    sce10x <- readCounts(tmpdir)
+    expect_identical(counts(sce10x, withDimnames=FALSE), my.counts)
+    sce10x <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE))
+    expect_identical(counts(sce10x, withDimnames=FALSE), my.counts)
     sce10x <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix"))
+    expect_identical(counts(sce10x, withDimnames=FALSE), as(my.counts, "SVT_SparseArray"))
+    sce10x <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix", mtx.two.pass=TRUE))
+    expect_identical(counts(sce10x, withDimnames=FALSE), as(my.counts, "SVT_SparseArray"))
+
+    tmph5 <- tempfile(fileext=".h5")
+    writeCounts(path=tmph5, se, version="3", force.integer=FALSE)
+    sce10x <- readCounts(tmph5)
+    denseref <- as.matrix(my.counts)
+    expect_identical(as.matrix(counts(sce10x, withDimnames=FALSE)), denseref)
+    sce10x <- readCounts(configureSampleForReadCounts(tmph5, mtx.class="SVT_SparseMatrix"))
+    expect_identical(as.matrix(counts(sce10x, withDimnames=FALSE)), denseref)
+})
+
+test_that("readCounts for completely empty matrices", {
+    tmpdir <- tempfile()
+    my.counts[] <- 0
+    assay(se, withDimnames=FALSE) <- my.counts
+    writeCounts(path=tmpdir, se, version="3", force.integer=FALSE)
+
+    sce10x <- readCounts(tmpdir)
+    expect_identical(counts(sce10x, withDimnames=FALSE), my.counts)
+    sce10x <- readCounts(configureSampleForReadCounts(tmpdir, mtx.two.pass=TRUE))
+    expect_identical(counts(sce10x, withDimnames=FALSE), my.counts)
+    sce10x <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix"))
+    expect_identical(counts(sce10x, withDimnames=FALSE), as(my.counts, "SVT_SparseArray"))
+    sce10x <- readCounts(configureSampleForReadCounts(tmpdir, mtx.class="SVT_SparseMatrix", mtx.two.pass=TRUE))
+    expect_identical(counts(sce10x, withDimnames=FALSE), as(my.counts, "SVT_SparseArray"))
+
+    tmph5 <- tempfile(fileext=".h5")
+    writeCounts(path=tmph5, se, version="3", force.integer=FALSE)
+    sce10x <- readCounts(tmph5)
+    denseref <- as.matrix(my.counts)
+    expect_identical(as.matrix(counts(sce10x, withDimnames=FALSE)), denseref)
+    sce10x <- readCounts(configureSampleForReadCounts(tmph5, mtx.class="SVT_SparseMatrix"))
     expect_identical(as.matrix(counts(sce10x, withDimnames=FALSE)), denseref)
 })

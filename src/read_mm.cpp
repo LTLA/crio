@@ -24,7 +24,7 @@ void sort_SVT_SparseMatrix_columns(const std::vector<int*>& iptrs, const std::ve
         for (I<decltype(start)> c = start, end = start + length; c < end; ++c) {
             auto iptr = iptrs[c];
             auto n = num[c];
-            if (std::is_sorted(iptr, iptr + n)) {
+            if (iptr == NULL || std::is_sorted(iptr, iptr + n)) {
                 continue;
             }
 
@@ -58,15 +58,22 @@ Rcpp::RObject read_mm_two_pass_SVT_SparseMatrix(const std::string& path, const s
     parser.scan_preamble();
     const auto& banner = parser.get_banner();
     std::string out_type;
+    bool all_empty = true;
 
     if (banner.field == eminem::Field::REAL || banner.field == eminem::Field::DOUBLE) {
         auto vptrs = sanisizer::create<std::vector<double*> >(NC);
         for (I<decltype(NC)> c = 0; c < NC; ++c) {
-            auto values = sanisizer::create<Rcpp::NumericVector>(nnz_per_col[c]);
-            auto indices = sanisizer::create<Rcpp::IntegerVector>(nnz_per_col[c]);
-            iptrs[c] = indices.begin(); // these pointers should still be valid after the std::move as they refer to R-managed allocations.
-            vptrs[c] = values.begin();
-            contents[c] = Rcpp::List::create(std::move(values), std::move(indices));
+            const auto curnnz = nnz_per_col[c];
+            if (curnnz) {
+                all_empty = false;
+                auto values = sanisizer::create<Rcpp::NumericVector>(curnnz);
+                auto indices = sanisizer::create<Rcpp::IntegerVector>(curnnz);
+                iptrs[c] = indices.begin(); // these pointers should still be valid after the std::move as they refer to R-managed allocations.
+                vptrs[c] = values.begin();
+                contents[c] = Rcpp::List::create(std::move(values), std::move(indices));
+            } else {
+                contents[c] = R_NilValue;
+            }
         }
 
         parser.scan_real([&](int r, int c, double val) -> void {
@@ -82,11 +89,17 @@ Rcpp::RObject read_mm_two_pass_SVT_SparseMatrix(const std::string& path, const s
     } else if (banner.field == eminem::Field::INTEGER) {
         auto vptrs = sanisizer::create<std::vector<int*> >(NC);
         for (I<decltype(NC)> c = 0; c < NC; ++c) {
-            auto values = sanisizer::create<Rcpp::IntegerVector>(nnz_per_col[c]);
-            auto indices = sanisizer::create<Rcpp::IntegerVector>(nnz_per_col[c]);
-            iptrs[c] = indices.begin(); // these pointers should still be valid after the std::move as they refer to R-managed allocations.
-            vptrs[c] = values.begin();
-            contents[c] = Rcpp::List::create(std::move(values), std::move(indices));
+            const auto curnnz = nnz_per_col[c];
+            if (curnnz) {
+                all_empty = false;
+                auto values = sanisizer::create<Rcpp::IntegerVector>(nnz_per_col[c]);
+                auto indices = sanisizer::create<Rcpp::IntegerVector>(nnz_per_col[c]);
+                iptrs[c] = indices.begin(); // these pointers should still be valid after the std::move as they refer to R-managed allocations.
+                vptrs[c] = values.begin();
+                contents[c] = Rcpp::List::create(std::move(values), std::move(indices));
+            } else {
+                contents[c] = R_NilValue;
+            }
         }
 
         parser.scan_integer([&](int r, int c, double val) -> void {
@@ -103,10 +116,17 @@ Rcpp::RObject read_mm_two_pass_SVT_SparseMatrix(const std::string& path, const s
         throw std::runtime_error("unsupported eminem::Field type");
     }
 
-    return Rcpp::List::create(
-        Rcpp::Named("list") = contents,
-        Rcpp::Named("type") = out_type 
-    );
+    if (all_empty) {
+        return Rcpp::List::create(
+            Rcpp::Named("list") = R_NilValue,
+            Rcpp::Named("type") = out_type 
+        );
+    } else {
+        return Rcpp::List::create(
+            Rcpp::Named("list") = contents,
+            Rcpp::Named("type") = out_type 
+        );
+    }
 }
 
 Rcpp::RObject read_mm_two_pass_CsparseMatrix(const std::string& path, const std::vector<int>& nnz_per_col, int threads) {
@@ -197,9 +217,9 @@ Rcpp::RObject read_mm_two_pass(const std::string& path, const std::string& class
     parser.scan_preamble();
 
     Rcpp::IntegerVector dimensions(2);
-    dimensions[0] = parser.get_nrows();
-    auto NC = parser.get_ncols();
-    dimensions[1] = NC;
+    dimensions[0] = sanisizer::cast<int>(parser.get_nrows());
+    const auto NC = parser.get_ncols();
+    dimensions[1] = sanisizer::cast<int>(NC);
 
     auto nnz_per_col = sanisizer::create<std::vector<int> >(NC);
     const auto& banner = parser.get_banner();
@@ -211,7 +231,7 @@ Rcpp::RObject read_mm_two_pass(const std::string& path, const std::string& class
             });
             break;
         case eminem::Field::INTEGER:
-            parser.scan_real([&](int, int c, int) -> void {
+            parser.scan_integer([&](int, int c, int) -> void {
                 auto& percol = nnz_per_col[c - 1];
                 percol = sanisizer::sum<int>(percol, 1);
             });
@@ -263,24 +283,38 @@ Rcpp::RObject format_one_pass_output(std::vector<std::pair<std::vector<int>, std
 
     if (class_name == "SVT_SparseMatrix") {
         auto output = sanisizer::create<Rcpp::List>(NC);
+        bool all_empty = true;
         for (I<decltype(NC)> c = 0; c < NC; ++c) {
             const auto& pair = contents[c];
-            output[c] = Rcpp::List::create(
-                Rclass_(pair.second.begin(), pair.second.end()),
-                Rcpp::IntegerVector(pair.first.begin(), pair.first.end())
-            );
+            if (pair.second.size()) {
+                all_empty = false;
+                output[c] = Rcpp::List::create(
+                    Rclass_(pair.second.begin(), pair.second.end()),
+                    Rcpp::IntegerVector(pair.first.begin(), pair.first.end())
+                );
+            } else {
+                output[c] = R_NilValue;
+            }
         }
 
-        return Rcpp::List::create(
-            Rcpp::Named("list") = output,
-            Rcpp::Named("type") = []{
-                if constexpr(std::is_same<Type_, int>::value) {
-                    return std::string("integer");
-                } else {
-                    return std::string("double");
-                }
-            }()
-        );
+        std::string out_type;
+        if constexpr(std::is_same<Type_, int>::value) {
+            out_type = "integer";
+        } else {
+            out_type = "double";
+        }
+
+        if (all_empty) {
+            return Rcpp::List::create(
+                Rcpp::Named("list") = R_NilValue,
+                Rcpp::Named("type") = out_type
+            );
+        } else {
+            return Rcpp::List::create(
+                Rcpp::Named("list") = output,
+                Rcpp::Named("type") = out_type
+            );
+        }
 
     } else {
         Rcpp::IntegerVector indptr(sanisizer::sum<I<decltype(std::declval<Rcpp::IntegerVector>().size())> >(NC, 1));
