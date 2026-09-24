@@ -12,45 +12,59 @@ export(writeMolecules)
 import(rhdf5)
 importClassesFrom(Matrix,dgCMatrix)
 importClassesFrom(SparseArray,SVT_SparseMatrix)
-importFrom(DelayedArray,"type<-")
-importFrom(DelayedArray,DelayedArray)
-importFrom(DelayedArray,type)
+importFrom(DelayedArray,
+  "type<-",
+  DelayedArray,
+  type
+)
 importFrom(GenomicRanges,GRanges)
 importFrom(HDF5Array,TENxMatrix)
 importFrom(IRanges,IRanges)
 importFrom(Rcpp,sourceCpp)
-importFrom(S4Vectors,"ROWNAMES<-")
-importFrom(S4Vectors,"mcols<-")
-importFrom(S4Vectors,DataFrame)
-importFrom(S4Vectors,ROWNAMES)
-importFrom(S4Vectors,cbind)
-importFrom(S4Vectors,extractROWS)
-importFrom(S4Vectors,make_zero_col_DFrame)
+importFrom(S4Vectors,
+  "ROWNAMES<-",
+  "mcols<-",
+  DataFrame,
+  ROWNAMES,
+  cbind,
+  extractROWS,
+  make_zero_col_DFrame
+)
 importFrom(SingleCellExperiment,SingleCellExperiment)
-importFrom(SummarizedExperiment,colData)
-importFrom(SummarizedExperiment,rowData)
+importFrom(SummarizedExperiment,
+  colData,
+  rowData
+)
 importFrom(beachmat,initializeCpp)
-importFrom(jsonlite,fromJSON)
-importFrom(jsonlite,toJSON)
-importFrom(methods,as)
-importFrom(methods,new)
-importFrom(rhdf5,H5Dclose)
-importFrom(rhdf5,H5Dget_space)
-importFrom(rhdf5,H5Dopen)
-importFrom(rhdf5,H5Fclose)
-importFrom(rhdf5,H5Fopen)
-importFrom(rhdf5,H5Gclose)
-importFrom(rhdf5,H5Gopen)
-importFrom(rhdf5,H5Sclose)
-importFrom(rhdf5,H5Sget_simple_extent_dims)
-importFrom(rhdf5,h5createFile)
-importFrom(rhdf5,h5createGroup)
-importFrom(rhdf5,h5ls)
-importFrom(rhdf5,h5read)
-importFrom(rhdf5,h5write)
-importFrom(rhdf5,h5writeAttribute)
+importFrom(jsonlite,
+  fromJSON,
+  toJSON
+)
+importFrom(methods,
+  as,
+  new
+)
+importFrom(rhdf5,
+  H5Dclose,
+  H5Dget_space,
+  H5Dopen,
+  H5Fclose,
+  H5Fopen,
+  H5Gclose,
+  H5Gopen,
+  H5Sclose,
+  H5Sget_simple_extent_dims,
+  h5createFile,
+  h5createGroup,
+  h5ls,
+  h5read,
+  h5write,
+  h5writeAttribute
+)
 importFrom(stats,rpois)
-importFrom(utils,head)
-importFrom(utils,read.delim)
-importFrom(utils,write.table)
+importFrom(utils,
+  head,
+  read.delim,
+  write.table
+)
 useDynLib(crio)

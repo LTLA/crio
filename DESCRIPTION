@@ -53,5 +53,5 @@ VignetteBuilder: knitr
 SystemRequirements: C++17, GNU make
 URL: https://github.com/LTLA/crio
 BugReports: https://github.com/LTLA/crio/issues
-RoxygenNote: 7.3.3
 Encoding: UTF-8
+Config/roxygen2/version: 8.1.0

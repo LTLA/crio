@@ -19,6 +19,11 @@ Useful links:
 \author{
 \strong{Maintainer}: Aaron Lun \email{infinite.monkeys.with.keyboards@gmail.com}
 
+Authors:
+\itemize{
+  \item Aaron Lun \email{infinite.monkeys.with.keyboards@gmail.com}
+}
+
 Other contributors:
 \itemize{
   \item Jonathan Griffiths [contributor]
